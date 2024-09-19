@@ -1,0 +1,22 @@
+# Dockerfile
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copie os arquivos de configuração do Node.js
+COPY package.json package-lock.json ./
+
+# Instala as dependências do projeto
+RUN npm install
+
+# Copie o restante do código fonte para o contêiner
+COPY . .
+
+# Compila o aplicativo Next.js
+RUN npm run build
+
+EXPOSE 3000
+
+# Comando para rodar o servidor de produção Next.js
+CMD ["npm", "run", "start"]

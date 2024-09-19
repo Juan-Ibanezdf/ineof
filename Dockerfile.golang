@@ -1,0 +1,21 @@
+# Dockerfile
+
+FROM golang:1.20-alpine
+
+WORKDIR /app
+
+# Copiar arquivos de configuração do Go
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod tidy
+
+# Copiar o código-fonte
+COPY . .
+
+# Compilar o aplicativo
+RUN go build -o main ./cmd/server
+
+EXPOSE 8080
+
+# Executar o aplicativo
+CMD ["./main"]

@@ -1,0 +1,74 @@
+version: '3.1'
+
+services:
+  db:
+    build: .
+    container_name: datalakehouse-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: datalake
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh  # Script de inicialização
+    networks:
+      - datalakehouse-network
+    restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@datalakehouse.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      CSRF_ENABLED: 'False'
+    ports:
+      - "8081:80"  # Porta ajustada para evitar conflito
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - datalakehouse-network
+    restart: always
+
+  golang-api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.golang
+    container_name: datalakehouse-golang
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/datalake?sslmode=disable
+      - PORT=8080
+    ports:
+      - "8080:8080"  # Porta do Golang API
+    depends_on:
+      - db
+    networks:
+      - datalakehouse-network
+    restart: always
+
+  nextjs:
+    build:
+      context: ./web
+      dockerfile: ./Dockerfile.nextjs
+    container_name: datalakehouse-nextjs
+    environment:
+      - NEXT_PUBLIC_API_URL=http://golang-api:8080
+    ports:
+      - "3000:3000"  # Porta do Next.js frontend
+    depends_on:
+      - golang-api
+    networks:
+      - datalakehouse-network
+    restart: always
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  datalakehouse-network:
+    driver: bridge
