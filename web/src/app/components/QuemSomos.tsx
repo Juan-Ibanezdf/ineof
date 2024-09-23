@@ -15,7 +15,7 @@ const QuemSomos = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 max-w-7xl mx-auto">
         {/* Coluna 1 */}
         <div className="flex flex-col items-center text-center">
-          <Image src={IneofLogo} alt="INEOF LOGO" className="w-2/4 lg:w-auto" />
+          <Image src={IneofLogo} alt="INEOF LOGO" className="w-2/4 lg:w-auto"  priority/>
           <p className="text-base sm:text-lg mt-4">
             O INCT é um Programa de Institutos Nacionais de Ciência e Tecnologia com o objetivo de: agregar,
             de forma articulada, os melhores grupos de pesquisa na fronteira da ciência e em áreas
@@ -32,7 +32,7 @@ const QuemSomos = () => {
 
         {/* Coluna 2 */}
         <div className="flex flex-col items-center text-center">
-          <Image src={Inct} alt="INCT LOGO" className="w-3/4 lg:w-auto" />
+          <Image src={Inct} alt="INCT LOGO" className="w-3/4 lg:w-auto" priority/>
           <p className="text-base sm:text-lg mt-4">
             O INEOF é uma iniciativa apoiada e co-financiada a nível federal pelo Conselho Nacional de
             Desenvolvimento Científico e Tecnológico (CNPq) e pela Coordenação de Aperfeiçoamento de

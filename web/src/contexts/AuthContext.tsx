@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { setCookie, destroyCookie, parseCookies } from 'nookies';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 import { recoverUserInformation, signInRequest } from "../services/auth";
 import axios from 'axios';
 
@@ -22,18 +22,6 @@ type SignInData = {
   senha: string;
   nomeDeUsuario: string;
   manterConectado: boolean;
-};
-
-type SignInResponse = {
-  token: string;
-  refreshToken?: string;
-  usuario: {
-    idUsuario: string;
-    email: string;
-    nomeDeUsuario: string;
-    perfilImagem: string;
-    nivelPermissao: string;
-  };
 };
 
 type AuthContextType = {
@@ -61,54 +49,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Verificando token ao recarregar a página...");
-
     const cookies = parseCookies();
     const token = cookies['token']; // Recupera o cookie 'token'
 
     if (!token) {
-      console.log("Token não encontrado.");
-    } else {
-      console.log("Token encontrado:", token);
+      setLoading(false);
+      return;
     }
 
-    if (token) {
-      recoverUserInformation()
-        .then(userInfo => {
-          if (userInfo && userInfo.usuario) {
-            console.log("Usuário recuperado:", userInfo.usuario);
-            setUser({
-              idUsuario: userInfo.usuario.idUsuario,
-              nomeDeUsuario: userInfo.usuario.nomeDeUsuario,
-              email: userInfo.usuario.email,
-              perfilImagem: userInfo.usuario.perfilImagem,
-              nivelPermissao: userInfo.usuario.nivelPermissao,
-              token: userInfo.usuario.token,
-            });
-            const isUserAdmin = userInfo.usuario.nivelPermissao === 'superusuario';
-            setIsAdministrator(isUserAdmin);
-          } else {
-            console.log("Usuário não encontrado ou inválido.");
-            setUser(null);
-            setIsAdministrator(false);
-          }
-        })
-        .catch((error) => {
-          console.error("Erro ao recuperar informações do usuário:", error);
+    recoverUserInformation()
+      .then(userInfo => {
+        if (userInfo && userInfo.usuario) {
+          setUser({
+            idUsuario: userInfo.usuario.idUsuario,
+            nomeDeUsuario: userInfo.usuario.nomeDeUsuario,
+            email: userInfo.usuario.email,
+            perfilImagem: userInfo.usuario.perfilImagem,
+            nivelPermissao: userInfo.usuario.nivelPermissao,
+            token: userInfo.usuario.token,
+          });
+          setIsAdministrator(userInfo.usuario.nivelPermissao === 'superusuario');
+        } else {
           setUser(null);
           setIsAdministrator(false);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      console.log("Nenhum token encontrado, usuário não autenticado.");
-      setLoading(false);
-    }
+        }
+      })
+      .catch(() => {
+        setUser(null);
+        setIsAdministrator(false);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   async function signIn({ email, senha, nomeDeUsuario, manterConectado }: SignInData) {
-    const response: SignInResponse = await signInRequest({ email, senha, nomeDeUsuario, manterConectado });
+    const response = await signInRequest({ email, senha, nomeDeUsuario, manterConectado });
     const isUserAdmin = response.usuario.nivelPermissao === 'superusuario';
     setIsAdministrator(isUserAdmin);
     setUser({

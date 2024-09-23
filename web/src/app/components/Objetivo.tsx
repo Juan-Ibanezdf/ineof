@@ -58,26 +58,26 @@ const Obejtivo = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
             {/* Ícones com descrições */}
             <div className="flex flex-col items-center">
-              <Image src={img1} alt={"Imagem 1"} width={80} height={80} />
+              <Image src={img1} alt={"Imagem 1"} width={80} height={80} priority/>
               <p className="text-sm text-center mt-4">
                 Prospecção energética e de impactos ambientais da exploração da
                 energia das ondas.
               </p>
             </div>
             <div className="flex flex-col items-center">
-              <Image src={img2} alt={"Imagem 2"} width={80} height={80} />
+              <Image src={img2} alt={"Imagem 2"} width={80} height={80} priority/>
               <p className="text-sm text-center mt-4">
                 Alternativas para telas fotovoltaicas de baixo custo.
               </p>
             </div>
             <div className="flex flex-col items-center">
-              <Image src={img3} alt={"Imagem 3"} width={80} height={80} />
+              <Image src={img3} alt={"Imagem 3"} width={80} height={80} priority />
               <p className="text-sm text-center mt-4">
                 Desenvolvimento de turbinas de baixas quedas e correntes.
               </p>
             </div>
             <div className="flex flex-col items-center">
-              <Image src={img4} alt={"Imagem 4"} width={80} height={80} />
+              <Image src={img4} alt={"Imagem 4"} width={80} height={80} priority/>
               <p className="text-sm text-center mt-4">Modelagem hidrodinâmica.</p>
             </div>
           </div>

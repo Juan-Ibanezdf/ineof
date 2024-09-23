@@ -1,6 +1,5 @@
-import { setCookie } from 'nookies';
+import { setCookie, parseCookies, destroyCookie } from 'nookies';
 import axios from 'axios';
-import { parseCookies } from 'nookies';
 
 const API_URL = 'http://localhost:8080';
 
@@ -24,6 +23,9 @@ interface SignInRequestData {
 
 export async function signInRequest({ email, senha, nomeDeUsuario, manterConectado }: SignInRequestData) {
   try {
+    const cookies = parseCookies();
+    const csrfToken = cookies['csrf_token'];
+
     const response = await axios.post(`${API_URL}/api/auth/login`, {
       email,
       senha,
@@ -31,12 +33,15 @@ export async function signInRequest({ email, senha, nomeDeUsuario, manterConecta
       manterConectado,
     }, {
       withCredentials: true,
+      headers: {
+        'X-CSRF-Token': csrfToken,
+      }
     });
 
     const { token, refreshToken, usuario } = response.data;
 
     setCookie(undefined, 'token', token, {
-      maxAge: 4 * 60 * 60,
+      maxAge: 4 * 60 * 60, // 4 horas
       path: '/',
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
@@ -44,7 +49,7 @@ export async function signInRequest({ email, senha, nomeDeUsuario, manterConecta
 
     if (manterConectado && refreshToken) {
       setCookie(undefined, 'refresh_token', refreshToken, {
-        maxAge: 30 * 24 * 60 * 60,
+        maxAge: 30 * 24 * 60 * 60, // 30 dias
         path: '/',
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
@@ -53,6 +58,7 @@ export async function signInRequest({ email, senha, nomeDeUsuario, manterConecta
 
     return {
       token,
+      refreshToken, // Corrige a estrutura para incluir refreshToken, se existir
       usuario: {
         idUsuario: usuario.idUsuario,
         email: usuario.email,
@@ -67,12 +73,13 @@ export async function signInRequest({ email, senha, nomeDeUsuario, manterConecta
   }
 }
 
+// Função para recuperar informações do usuário a partir do token
 export function recoverUserInformation(): Promise<UserInfo | null> {
   return new Promise((resolve, reject) => {
-    const { token } = parseCookies();
+    const cookies = parseCookies();
+    const token = cookies['token'];
 
     if (!token) {
-      console.log("Token não encontrado nos cookies.");
       reject(new Error('Token não encontrado'));
       return;
     }
@@ -91,12 +98,12 @@ export function recoverUserInformation(): Promise<UserInfo | null> {
 
       resolve({ usuario });
     } catch (error) {
-      console.error('Erro ao decodificar o token:', error);
       reject(error);
     }
   });
 }
 
+// Função auxiliar para decodificar o JWT
 function parseJwt(token: string) {
   const base64Url = token.split('.')[1];
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');

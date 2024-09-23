@@ -15,19 +15,21 @@ import IneofLogo from "../../../public/INEOFLogoBranca.svg";
 import Link from "next/link";
 import Image from "next/image";
 import userImage from "../../../public/user.svg";
-import { AuthContext } from "../../contexts/AuthContext";
+import { AuthContext } from "../../contexts/AuthContext"; // Importa o AuthContext
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
 const Header: React.FC = () => {
-  const { user, signOut } = useContext(AuthContext);
+  const { user, signOut } = useContext(AuthContext); // Puxa o `user` e `signOut` do contexto de autenticação
   const [isAdministrator, setIsAdministrator] = useState(false);
 
   useEffect(() => {
-    setIsAdministrator(user?.nivelPermissao === "superusuario");
-  }, [user]);
+    if (user) {
+      setIsAdministrator(user.nivelPermissao === "superusuario"); // Verifica se o usuário é administrador
+    }
+  }, [user]); // Atualiza quando o `user` muda
 
   const navigation = isAdministrator
     ? [
@@ -46,14 +48,10 @@ const Header: React.FC = () => {
         { name: "EOCEANO", href: "/eoceano" },
       ];
 
-  const profile = [
-    "Meu Perfil",
-    "Minhas Publicações",
-    "Minhas Noticias",
-  ];
+  const profile = ["Meu Perfil", "Minhas Publicações", "Minhas Noticias"];
 
   const handleLogout = () => {
-    signOut();
+    signOut(); // Chama a função de logout
   };
 
   return (
@@ -198,6 +196,7 @@ const Header: React.FC = () => {
           </div>
 
           <DisclosurePanel className="md:hidden">
+            {/* Aqui, se o usuário estiver logado, renderiza o menu específico */}
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {navigation.map((item) => (
                 <DisclosureButton
@@ -225,7 +224,6 @@ const Header: React.FC = () => {
                       alt="User"
                       width={50}
                       height={50}
-                    
                       priority
                     />
                   </div>
@@ -241,9 +239,6 @@ const Header: React.FC = () => {
                     <span className="sr-only">Visualizar Notificações</span>
                     <BellIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
-                  <span className="ml-2 text-sm font-medium text-gray-400">
-                    Notificações
-                  </span>
                 </div>
                 <div className="mt-3 space-y-1 px-2">
                   {profile.map((item) => (
