@@ -4,8 +4,7 @@ import "time"
 
 // Favorito representa a tabela de favoritos no banco de dados
 type Favorito struct {
-	IDFavorito   string    `json:"id_favorito"`   // Alterado para string para UUID
-	IDUsuario    string    `json:"id_usuario"`    // Alterado para string para UUID
-	IDPublicacao string    `json:"id_publicacao"` // Alterado para string para UUID
-	DataFavorito time.Time `json:"data_favorito"`
+	IDUsuario    string    `json:"id_usuario"`    // UUID do usuário que favoritou a publicação
+	IDPublicacao string    `json:"id_publicacao"` // UUID da publicação favoritada
+	DataFavorito time.Time `json:"data_favorito"` // Data em que a publicação foi favoritada
 }

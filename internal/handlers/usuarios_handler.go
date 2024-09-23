@@ -4,9 +4,9 @@ import (
 	"api/internal/models"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v4"
@@ -24,13 +24,16 @@ func UsuariosRouter(db *pgxpool.Pool) http.Handler {
 	r.Get("/", getAllUsuarios(db))
 	r.Get("/{id}", GetUsuarioByID(db))
 	r.Get("/", GetPerfilUsuarioByID(db))
+	r.Get("/usuarios/cargo/{cargo_id}", GetUsuariosByCargo(db))
 	r.Put("/{id}", UpdatePerfilUsuario(db))
 	r.Put("/{id}", updateUsuario(db))
 	r.Delete("/{id}", deleteUsuario(db))
 	return r
 }
 
-// createUsuario cria um novo usuario
+// createUsuario cria um novo usuario e atribui o cargo "Nenhum" (ID 13) e o nível de permissão "leitor" por padrão
+
+// createUsuario cria um novo usuário e atribui o cargo "Nenhum"
 func createUsuario(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var usuario models.Usuario
@@ -42,14 +45,14 @@ func createUsuario(db *pgxpool.Pool) http.HandlerFunc {
 		// Verificar se o usuário ou email já existem
 		var existingID string
 		err := db.QueryRow(context.Background(), `
-			SELECT id_usuario FROM usuarios WHERE nome_de_usuario=$1 OR email=$2`, usuario.NomeDeUsuario, usuario.Email).Scan(&existingID)
+            SELECT id_usuario FROM usuarios WHERE nome_de_usuario=$1 OR email=$2`, usuario.NomeDeUsuario, usuario.Email).Scan(&existingID)
 
 		if err == nil && existingID != "" {
 			http.Error(w, "Usuário ou E-mail já cadastrado", http.StatusConflict)
 			return
 		}
 
-		// Validar a senha (regras de senha)
+		// Validar a senha
 		if !PasswordRegex.MatchString(usuario.Senha) {
 			http.Error(w, "A senha deve conter pelo menos 8 caracteres.", http.StatusBadRequest)
 			return
@@ -63,26 +66,33 @@ func createUsuario(db *pgxpool.Pool) http.HandlerFunc {
 		}
 		usuario.Senha = string(hashedPassword)
 
+		// Definir o nível de permissão como "leitor" por padrão
+		if usuario.NivelPermissao == "" {
+			usuario.NivelPermissao = "leitor"
+		}
+
 		// Inserir usuário no banco de dados e retornar o ID gerado
 		err = db.QueryRow(context.Background(), `
-			INSERT INTO usuarios (id_usuario, nome_de_usuario, senha, email, nivel_acesso, nome_completo, perfil_imagem, 
-				data_criacao, data_atualizacao, curriculo_lattes, telefone, ocupacao, termos_de_uso, 
-				descricao, data_desativacao, status_ativacao, email_verificado, ultimo_login, ip_ultimo_login,
-				pais, estado, cidade, matricula, instituicao) 
-			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id_usuario`,
-			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NivelAcesso, usuario.NomeCompleto, usuario.PerfilImagem,
-			usuario.DataCriacao, usuario.DataAtualizacao, usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.TermosDeUso,
-			usuario.Descricao, usuario.DataDesativacao, usuario.StatusAtivacao, usuario.EmailVerificado, usuario.UltimoLogin, usuario.IpUltimoLogin,
-			usuario.Pais, usuario.Estado, usuario.Cidade, usuario.Matricula, usuario.Instituicao).Scan(&usuario.ID)
+            INSERT INTO usuarios (nome_de_usuario, senha, email, nivel_permissao, termos_de_uso, status_ativacao, email_verificado) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_usuario`,
+			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NivelPermissao, usuario.TermosDeUso, usuario.StatusAtivacao, usuario.EmailVerificado).Scan(&usuario.ID)
 		if err != nil {
-			http.Error(w, "Erro ao registrar usuário: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Erro ao registrar usuário", http.StatusInternalServerError)
 			return
 		}
 
-		// Respondendo com o usuário registrado, incluindo o ID gerado
+		// Atribuir o cargo "Nenhum" (ID 13) ao novo usuário
+		_, err = db.Exec(context.Background(), `
+            INSERT INTO Usuario_Cargo (id_usuario, id_cargo) VALUES ($1, 13)`, usuario.ID)
+		if err != nil {
+			http.Error(w, "Erro ao atribuir cargo", http.StatusInternalServerError)
+			return
+		}
+
+		// Responder com sucesso
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"message": "Usuário registrado com sucesso",
+			"message": "Usuário criado com sucesso",
 			"usuario": usuario,
 		})
 	}
@@ -102,7 +112,7 @@ func getAllUsuarios(db *pgxpool.Pool) http.HandlerFunc {
 		for rows.Next() {
 			var usuario models.Usuario
 			err := rows.Scan(
-				&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelAcesso,
+				&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelPermissao,
 				&usuario.NomeCompleto, &usuario.PerfilImagem, &usuario.DataCriacao, &usuario.DataAtualizacao,
 				&usuario.CurriculoLattes, &usuario.Telefone, &usuario.Ocupacao, &usuario.TermosDeUso,
 				&usuario.Descricao, &usuario.DataDesativacao, &usuario.StatusAtivacao, &usuario.EmailVerificado,
@@ -129,7 +139,7 @@ func getAllUsuarios(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// GetPerfilUsuarioByID retorna um usuário autenticado pelo ID do token
+// GetPerfilUsuarioByID retorna os dados do perfil do usuário autenticado
 func GetPerfilUsuarioByID(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Obtém o cookie do token JWT
@@ -156,39 +166,38 @@ func GetPerfilUsuarioByID(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Adiciona log para verificar o ID extraído
-		fmt.Printf("ID do usuário extraído do token: %s\n", idFromToken)
-
-		// Busca o usuário no banco de dados usando o ID do token
+		// Busca os dados do perfil que o usuário pode visualizar, incluindo id_usuario
 		var usuario models.Usuario
-		err = db.QueryRow(context.Background(), "SELECT * FROM usuarios WHERE id_usuario = $1", idFromToken).Scan(
-			&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelAcesso,
-			&usuario.NomeCompleto, &usuario.PerfilImagem, &usuario.DataCriacao, &usuario.DataAtualizacao,
-			&usuario.CurriculoLattes, &usuario.Telefone, &usuario.Ocupacao, &usuario.TermosDeUso,
-			&usuario.Descricao, &usuario.DataDesativacao, &usuario.StatusAtivacao, &usuario.EmailVerificado,
-			&usuario.UltimoLogin, &usuario.IpUltimoLogin, &usuario.Pais, &usuario.Estado,
-			&usuario.Cidade, &usuario.Matricula, &usuario.Instituicao, &usuario.RefreshToken)
+		err = db.QueryRow(context.Background(), `
+			SELECT id_usuario, nome_de_usuario, senha, email, nivel_permissao, nome_completo, perfil_imagem, 
+				data_criacao, data_atualizacao, curriculo_lattes, telefone, ocupacao, termos_de_uso, 
+				descricao, status_ativacao, email_verificado, ultimo_login, ip_ultimo_login, pais, estado, 
+				cidade, matricula, instituicao 
+			FROM usuarios WHERE id_usuario = $1`, idFromToken).Scan(
+			&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelPermissao, &usuario.NomeCompleto,
+			&usuario.PerfilImagem, &usuario.DataCriacao, &usuario.DataAtualizacao, &usuario.CurriculoLattes,
+			&usuario.Telefone, &usuario.Ocupacao, &usuario.TermosDeUso, &usuario.Descricao,
+			&usuario.StatusAtivacao, &usuario.EmailVerificado, &usuario.UltimoLogin, &usuario.IpUltimoLogin,
+			&usuario.Pais, &usuario.Estado, &usuario.Cidade, &usuario.Matricula, &usuario.Instituicao)
 
 		if err != nil {
-			// Adiciona log para verificar o erro ao buscar o usuário
-			fmt.Printf("Erro ao buscar usuário: %v\n", err)
 			http.Error(w, "Usuário não encontrado", http.StatusNotFound)
 			return
 		}
 
-		// Retorna os dados do usuário como JSON
+		// Retorna os dados do perfil como JSON, incluindo id_usuario
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(usuario)
 	}
 }
 
-// getUsuarioByID retorna um usuario pelo ID
+// GetUsuarioByID retorna um usuario pelo ID
 func GetUsuarioByID(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		var usuario models.Usuario
 		err := db.QueryRow(context.Background(), "SELECT * FROM usuarios WHERE id_usuario = $1", id).Scan(
-			&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelAcesso,
+			&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelPermissao,
 			&usuario.NomeCompleto, &usuario.PerfilImagem, &usuario.DataCriacao, &usuario.DataAtualizacao,
 			&usuario.CurriculoLattes, &usuario.Telefone, &usuario.Ocupacao, &usuario.TermosDeUso,
 			&usuario.Descricao, &usuario.DataDesativacao, &usuario.StatusAtivacao, &usuario.EmailVerificado,
@@ -204,38 +213,127 @@ func GetUsuarioByID(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// updateUsuario atualiza um usuario
+// updateUsuario atualiza um usuário e seus cargos
 func updateUsuario(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
-		var usuario models.Usuario
-		if err := json.NewDecoder(r.Body).Decode(&usuario); err != nil {
+		var input struct {
+			Usuario models.Usuario `json:"usuario"`
+			Cargos  []int          `json:"cargos"`
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
 
+		usuario := input.Usuario
+		cargos := input.Cargos
+
+		// Atualizar os dados do usuário na tabela `usuarios`
 		_, err := db.Exec(context.Background(), `
-			UPDATE usuarios 
-			SET nome_de_usuario = $1, senha = $2, email = $3, nivel_acesso = $4, nome_completo = $5, perfil_imagem = $6, 
-			data_criacao = $7, data_atualizacao = $8, curriculo_lattes = $9, telefone = $10, ocupacao = $11, termos_de_uso = $12, 
-			descricao = $13, data_desativacao = $14, status_ativacao = $15, email_verificado = $16, ultimo_login = $17, 
-			ip_ultimo_login = $18, pais = $19, estado = $20, cidade = $21, matricula = $22, instituicao = $23 
-			WHERE id_usuario = $24`,
-			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NivelAcesso, usuario.NomeCompleto, usuario.PerfilImagem,
-			usuario.DataCriacao, usuario.DataAtualizacao, usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.TermosDeUso,
-			usuario.Descricao, usuario.DataDesativacao, usuario.StatusAtivacao, usuario.EmailVerificado, usuario.UltimoLogin, usuario.IpUltimoLogin,
-			usuario.Pais, usuario.Estado, usuario.Cidade, usuario.Matricula, usuario.Instituicao, id)
+            UPDATE usuarios 
+            SET nome_de_usuario = $1, senha = $2, email = $3, nivel_permissao = $4, nome_completo = $5, perfil_imagem = $6, 
+                data_atualizacao = CURRENT_TIMESTAMP
+            WHERE id_usuario = $7`,
+			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NivelPermissao, usuario.NomeCompleto, usuario.PerfilImagem, id)
 		if err != nil {
-			http.Error(w, "Failed to update usuario: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Erro ao atualizar usuário", http.StatusInternalServerError)
 			return
 		}
 
+		// Remover os cargos antigos do usuário
+		_, err = db.Exec(context.Background(), `
+            DELETE FROM Usuario_Cargo WHERE id_usuario = $1`, id)
+		if err != nil {
+			http.Error(w, "Erro ao remover cargos antigos", http.StatusInternalServerError)
+			return
+		}
+
+		// Atribuir os novos cargos, se fornecidos
+		if len(cargos) > 0 {
+			for _, cargoID := range cargos {
+				_, err := db.Exec(context.Background(), `
+                    INSERT INTO Usuario_Cargo (id_usuario, id_cargo) VALUES ($1, $2)`, id, cargoID)
+				if err != nil {
+					http.Error(w, "Erro ao atribuir cargos", http.StatusInternalServerError)
+					return
+				}
+			}
+		}
+
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Usuario updated successfully"))
+		w.Write([]byte("Usuário atualizado com sucesso"))
 	}
 }
 
-// updateUsuario atualiza um usuario
+// GetUsuariosByCargo retorna todos os usuários com um ou mais cargos específicos
+func GetUsuariosByCargo(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Obter os IDs de cargos passados na URL, separados por vírgula (exemplo: /usuarios/cargo/1,2,3)
+		cargosParam := chi.URLParam(r, "cargo_ids")
+		cargoIDs := strings.Split(cargosParam, ",")
+
+		// Verificar se ao menos um cargo foi passado
+		if len(cargoIDs) == 0 {
+			http.Error(w, "Nenhum cargo fornecido", http.StatusBadRequest)
+			return
+		}
+
+		// Montar a consulta SQL para selecionar usuários com os cargos fornecidos
+		query := `
+			SELECT u.id_usuario, u.nome_de_usuario, u.email, u.nome_completo, u.perfil_imagem, array_agg(c.nome_cargo)
+			FROM usuarios u
+			JOIN usuario_cargo uc ON u.id_usuario = uc.id_usuario
+			JOIN cargos c ON uc.id_cargo = c.id_cargo
+			WHERE uc.id_cargo = ANY($1::int[])
+			GROUP BY u.id_usuario`
+
+		// Executar a consulta passando os IDs de cargos
+		rows, err := db.Query(context.Background(), query, cargoIDs)
+		if err != nil {
+			http.Error(w, "Failed to query usuarios: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		// Preparar a resposta com os usuários e seus cargos
+		var usuarios []map[string]interface{}
+		for rows.Next() {
+			var usuarioID, nomeDeUsuario, email, nomeCompleto, perfilImagem string
+			var cargos []string
+
+			err := rows.Scan(&usuarioID, &nomeDeUsuario, &email, &nomeCompleto, &perfilImagem, &cargos)
+			if err != nil {
+				http.Error(w, "Failed to scan usuario: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// Montar o objeto de resposta para o usuário
+			usuario := map[string]interface{}{
+				"id_usuario":      usuarioID,
+				"nome_de_usuario": nomeDeUsuario,
+				"email":           email,
+				"nome_completo":   nomeCompleto,
+				"perfil_imagem":   perfilImagem,
+				"cargos":          cargos,
+			}
+			usuarios = append(usuarios, usuario)
+		}
+
+		// Verificar se houve erro ao iterar as linhas
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Error iterating rows: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Retornar a lista de usuários e seus cargos como JSON
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(usuarios)
+	}
+}
+
+// UpdatePerfilUsuario atualiza apenas os campos permitidos do perfil do usuario
 func UpdatePerfilUsuario(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
@@ -247,22 +345,20 @@ func UpdatePerfilUsuario(db *pgxpool.Pool) http.HandlerFunc {
 
 		_, err := db.Exec(context.Background(), `
 			UPDATE usuarios 
-			SET nome_de_usuario = $1, senha = $2, email = $3, nivel_acesso = $4, nome_completo = $5, perfil_imagem = $6, 
-			data_criacao = $7, data_atualizacao = $8, curriculo_lattes = $9, telefone = $10, ocupacao = $11, termos_de_uso = $12, 
-			descricao = $13, data_desativacao = $14, status_ativacao = $15, email_verificado = $16, ultimo_login = $17, 
-			ip_ultimo_login = $18, pais = $19, estado = $20, cidade = $21, matricula = $22, instituicao = $23 
-			WHERE id_usuario = $24`,
-			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NivelAcesso, usuario.NomeCompleto, usuario.PerfilImagem,
-			usuario.DataCriacao, usuario.DataAtualizacao, usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.TermosDeUso,
-			usuario.Descricao, usuario.DataDesativacao, usuario.StatusAtivacao, usuario.EmailVerificado, usuario.UltimoLogin, usuario.IpUltimoLogin,
+			SET nome_de_usuario = $1, senha = $2, email = $3, nome_completo = $4, perfil_imagem = $5, 
+			curriculo_lattes = $6, telefone = $7, ocupacao = $8, descricao = $9, 
+			pais = $10, estado = $11, cidade = $12, matricula = $13, instituicao = $14 
+			WHERE id_usuario = $15`,
+			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NomeCompleto, usuario.PerfilImagem,
+			usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.Descricao,
 			usuario.Pais, usuario.Estado, usuario.Cidade, usuario.Matricula, usuario.Instituicao, id)
 		if err != nil {
-			http.Error(w, "Failed to update usuario: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to update perfil: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Usuario updated successfully"))
+		w.Write([]byte("Perfil updated successfully"))
 	}
 }
 

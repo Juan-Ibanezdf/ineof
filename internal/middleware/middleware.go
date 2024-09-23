@@ -38,7 +38,7 @@ func AuthorizationMiddleware(requiredAccessLevel string) func(http.Handler) http
 			}
 
 			// Obter o nível de acesso do token
-			userAccessLevel, ok := claims["nivelAcesso"].(string)
+			userAccessLevel, ok := claims["nivelPermissao"].(string)
 			if !ok {
 				http.Error(w, "Nível de acesso não encontrado", http.StatusUnauthorized)
 				return
@@ -59,11 +59,12 @@ func AuthorizationMiddleware(requiredAccessLevel string) func(http.Handler) http
 // Função para verificar se o nível de acesso é suficiente
 func isAccessLevelSufficient(userLevel, requiredLevel string) bool {
 	levels := map[string]int{
-		"basico":        1,
-		"intermediario": 2,
-		"avancado":      3,
-		"admin":         4,
-		"superadmin":    5,
+		"leitor":                     1,
+		"colaborador":                2,
+		"gestor_conteudo":            3,
+		"administrador_equipamentos": 4,
+		"administrador_campanhas":    5,
+		"superusuario":               6,
 	}
 
 	return levels[userLevel] >= levels[requiredLevel]

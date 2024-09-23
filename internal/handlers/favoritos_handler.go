@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v4"
@@ -28,24 +28,38 @@ func createFavorito(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var favorito models.Favorito
 		if err := json.NewDecoder(r.Body).Decode(&favorito); err != nil {
-			http.Error(w, "invalid input", http.StatusBadRequest)
+			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
 
 		userID, err := extractUserIDFromToken(r)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
+		// Define o ID do usuário e a data do favorito
 		favorito.IDUsuario = userID
+		favorito.DataFavorito = time.Now()
 
+		// Verificar se já existe o favorito para evitar duplicidade
+		var existingID string
+		err = db.QueryRow(context.Background(), `
+			SELECT id_usuario FROM Favoritos WHERE id_usuario = $1 AND id_publicacao = $2`,
+			favorito.IDUsuario, favorito.IDPublicacao).Scan(&existingID)
+
+		if err == nil && existingID != "" {
+			http.Error(w, "Favorito já existe", http.StatusConflict)
+			return
+		}
+
+		// Inserir o novo favorito
 		_, err = db.Exec(context.Background(), `
 			INSERT INTO Favoritos (id_usuario, id_publicacao, data_favorito) 
 			VALUES ($1, $2, $3)`,
 			favorito.IDUsuario, favorito.IDPublicacao, favorito.DataFavorito)
 		if err != nil {
-			http.Error(w, "failed to create favorito: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to create favorito: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -58,13 +72,16 @@ func getAllFavoritos(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := extractUserIDFromToken(r)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		rows, err := db.Query(context.Background(), "SELECT * FROM Favoritos WHERE id_usuario = $1", userID)
+		rows, err := db.Query(context.Background(), `
+			SELECT id_usuario, id_publicacao, data_favorito 
+			FROM Favoritos 
+			WHERE id_usuario = $1`, userID)
 		if err != nil {
-			http.Error(w, "failed to query favoritos", http.StatusInternalServerError)
+			http.Error(w, "Failed to query favoritos", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
@@ -72,9 +89,9 @@ func getAllFavoritos(db *pgxpool.Pool) http.HandlerFunc {
 		var favoritos []models.Favorito
 		for rows.Next() {
 			var favorito models.Favorito
-			err := rows.Scan(&favorito.IDFavorito, &favorito.IDUsuario, &favorito.IDPublicacao, &favorito.DataFavorito)
+			err := rows.Scan(&favorito.IDUsuario, &favorito.IDPublicacao, &favorito.DataFavorito)
 			if err != nil {
-				http.Error(w, "failed to scan favorito", http.StatusInternalServerError)
+				http.Error(w, "Failed to scan favorito", http.StatusInternalServerError)
 				return
 			}
 			favoritos = append(favoritos, favorito)
@@ -85,26 +102,25 @@ func getAllFavoritos(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// getFavoritoByID retorna um favorito pelo ID, apenas se pertence ao usuário autenticado
+// getFavoritoByID retorna um favorito pelo ID da publicação se pertence ao usuário autenticado
 func getFavoritoByID(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			http.Error(w, "invalid favorito ID", http.StatusBadRequest)
-			return
-		}
+		idPublicacao := chi.URLParam(r, "id")
 
 		userID, err := extractUserIDFromToken(r)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		var favorito models.Favorito
-		err = db.QueryRow(context.Background(), "SELECT * FROM Favoritos WHERE id_favorito = $1 AND id_usuario = $2", id, userID).Scan(
-			&favorito.IDFavorito, &favorito.IDUsuario, &favorito.IDPublicacao, &favorito.DataFavorito)
+		err = db.QueryRow(context.Background(), `
+			SELECT id_usuario, id_publicacao, data_favorito 
+			FROM Favoritos 
+			WHERE id_publicacao = $1 AND id_usuario = $2`, idPublicacao, userID).Scan(
+			&favorito.IDUsuario, &favorito.IDPublicacao, &favorito.DataFavorito)
 		if err != nil {
-			http.Error(w, "favorito not found", http.StatusNotFound)
+			http.Error(w, "Favorito not found", http.StatusNotFound)
 			return
 		}
 
@@ -113,24 +129,22 @@ func getFavoritoByID(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// deleteFavorito deleta um favorito, apenas se pertence ao usuário autenticado
+// deleteFavorito deleta um favorito pela publicação, apenas se pertence ao usuário autenticado
 func deleteFavorito(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			http.Error(w, "invalid favorito ID", http.StatusBadRequest)
-			return
-		}
+		idPublicacao := chi.URLParam(r, "id")
 
 		userID, err := extractUserIDFromToken(r)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		_, err = db.Exec(context.Background(), "DELETE FROM Favoritos WHERE id_favorito = $1 AND id_usuario = $2", id, userID)
+		_, err = db.Exec(context.Background(), `
+			DELETE FROM Favoritos 
+			WHERE id_publicacao = $1 AND id_usuario = $2`, idPublicacao, userID)
 		if err != nil {
-			http.Error(w, "failed to delete favorito", http.StatusInternalServerError)
+			http.Error(w, "Failed to delete favorito", http.StatusInternalServerError)
 			return
 		}
 

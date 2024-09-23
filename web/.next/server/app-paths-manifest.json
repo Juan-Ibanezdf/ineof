@@ -1,5 +1,5 @@
 {
   "/page": "app/page.js",
-  "/publicacoes/page": "app/publicacoes/page.js",
-  "/auth/login/page": "app/auth/login/page.js"
+  "/auth/login/page": "app/auth/login/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js"
 }

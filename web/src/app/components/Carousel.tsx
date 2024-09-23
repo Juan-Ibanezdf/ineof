@@ -26,10 +26,7 @@ const Carousel: React.FC = () => {
   }, [nextSlide]);
 
   return (
-    <div
-      className="relative w-full overflow-hidden"
-      style={{ height: "504px" }}
-    >
+    <div className="relative w-full overflow-hidden" style={{ height: "504px" }}>
       {images.map((img, index) => (
         <div
           key={index}
@@ -40,8 +37,9 @@ const Carousel: React.FC = () => {
           <Image
             src={img}
             alt={`Slide ${index}`}
-            layout="fill"
-            objectFit="cover"
+            fill
+            style={{ objectFit: "cover" }} // Usando style para definir o objectFit
+            priority // Adicionando priority para LCP
           />
           <div className="absolute inset-0 bg-black opacity-50"></div>
         </div>
@@ -60,7 +58,7 @@ const Carousel: React.FC = () => {
             <path
               d="M0.99353 1.9436L80.492 2.44359"
               stroke="#EFF4F7"
-              stroke-width="3"
+              strokeWidth="2" // stroke-width convertido para strokeWidth
             />
           </svg>
 
@@ -84,7 +82,7 @@ const Carousel: React.FC = () => {
             <path
               d="M0.99353 1.9436L119.994 2.9436"
               stroke="#EFF4F7"
-              strokeWidth="3"
+              strokeWidth="2" // stroke-width convertido para strokeWidth
             />
           </svg>
         </div>

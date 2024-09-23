@@ -6,9 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -16,7 +16,7 @@ import (
 func NoticiasRouter(db *pgxpool.Pool) http.Handler {
 	r := chi.NewRouter()
 	r.Post("/", CreateNoticia(db))
-	r.Get("/", GetAllNoticias(db))
+	r.Get("/", GetAllNoticiasComFiltro(db)) // Nova rota para busca com filtros
 	r.Get("/{id}", GetNoticiaByID(db))
 	r.Put("/{id}", UpdateNoticia(db))
 	r.Delete("/{id}", DeleteNoticia(db))
@@ -34,11 +34,11 @@ func CreateNoticia(db *pgxpool.Pool) http.HandlerFunc {
 
 		// Gerar automaticamente o slug usando o título da notícia
 		slug := utils.Slugify(noticia.Titulo)
-		noticia.Slug = &slug
+		noticia.Slug = slug
 
 		// Geração automática de identifier
 		identifier := utils.MakeID(10)
-		noticia.Identifier = &identifier
+		noticia.Identifier = identifier
 
 		_, err := db.Exec(context.Background(), `
 			INSERT INTO Noticias (id_noticia, titulo, subtitulo, data_publicacao, nome_autor, imagem_noticia, lead, categoria, data_revisao, nome_revisor, slug, identifier) 
@@ -54,14 +54,67 @@ func CreateNoticia(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// GetAllNoticias retorna todas as notícias
-func GetAllNoticias(db *pgxpool.Pool) http.HandlerFunc {
+// GetAllNoticiasComFiltro retorna todas as notícias com filtros opcionais de título, categoria, autores e tags, além de paginação
+func GetAllNoticiasComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		titulo := r.URL.Query().Get("titulo")
+		categoria := r.URL.Query().Get("categoria")
+		autor := r.URL.Query().Get("autor")
+		tags := r.URL.Query().Get("tags") // Assumindo que tags podem ser uma parte de palavras-chave
+		paginaStr := r.URL.Query().Get("pagina")
+		itensPorPaginaStr := r.URL.Query().Get("itens_por_pagina")
+
+		// Valores padrão para paginação
+		pagina := 1
+		itensPorPagina := 12
+		if paginaStr != "" {
+			pagina, _ = strconv.Atoi(paginaStr)
+		}
+		if itensPorPaginaStr != "" {
+			itensPorPagina, _ = strconv.Atoi(itensPorPaginaStr)
+		}
+
+		offset := (pagina - 1) * itensPorPagina
+
+		// Construir a consulta SQL dinamicamente com base nos parâmetros
 		query := `
 			SELECT id_noticia, titulo, subtitulo, data_publicacao, nome_autor, imagem_noticia, lead, categoria, data_revisao, nome_revisor, slug, identifier
 			FROM Noticias
-		`
-		rows, err := db.Query(context.Background(), query)
+			WHERE 1=1`
+
+		params := []interface{}{}
+		paramIndex := 1
+
+		if titulo != "" {
+			query += ` AND titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			params = append(params, titulo)
+			paramIndex++
+		}
+
+		if categoria != "" {
+			query += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			params = append(params, categoria)
+			paramIndex++
+		}
+
+		if autor != "" {
+			query += ` AND nome_autor ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			params = append(params, autor)
+			paramIndex++
+		}
+
+		if tags != "" {
+			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (tags)` // Assumindo que tags é um array
+			params = append(params, tags)
+			paramIndex++
+		}
+
+		// Se nenhum filtro for passado, retorna as notícias mais recentes
+		query += ` ORDER BY data_publicacao DESC LIMIT $` + strconv.Itoa(paramIndex) + ` OFFSET $` + strconv.Itoa(paramIndex+1)
+		params = append(params, itensPorPagina, offset)
+
+		// Executar a consulta
+		rows, err := db.Query(context.Background(), query, params...)
 		if err != nil {
 			http.Error(w, "Failed to query noticias", http.StatusInternalServerError)
 			return
@@ -102,11 +155,7 @@ func GetNoticiaByID(db *pgxpool.Pool) http.HandlerFunc {
 			&noticia.Slug, &noticia.Identifier)
 
 		if err != nil {
-			if err == pgx.ErrNoRows {
-				http.Error(w, "Noticia not found", http.StatusNotFound)
-			} else {
-				http.Error(w, "Failed to get noticia: "+err.Error(), http.StatusInternalServerError)
-			}
+			http.Error(w, "Noticia not found", http.StatusNotFound)
 			return
 		}
 

@@ -10,7 +10,7 @@ import {
   MenuItems,
   Transition,
 } from "@headlessui/react";
-import { BellIcon, XMarkIcon, Bars3Icon } from "@heroicons/react/24/outline"; // Ícones atualizados
+import { BellIcon, XMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import IneofLogo from "../../../public/INEOFLogoBranca.svg";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,7 +26,7 @@ const Header: React.FC = () => {
   const [isAdministrator, setIsAdministrator] = useState(false);
 
   useEffect(() => {
-    setIsAdministrator(user?.nivelDeAcesso === "administrador");
+    setIsAdministrator(user?.nivelPermissao === "superusuario");
   }, [user]);
 
   const navigation = isAdministrator
@@ -46,7 +46,11 @@ const Header: React.FC = () => {
         { name: "EOCEANO", href: "/eoceano" },
       ];
 
-  const profile = ["Meu Perfil", "Minhas Publicações", "Minhas Noticias"];
+  const profile = [
+    "Meu Perfil",
+    "Minhas Publicações",
+    "Minhas Noticias",
+  ];
 
   const handleLogout = () => {
     signOut();
@@ -56,24 +60,25 @@ const Header: React.FC = () => {
     <Disclosure as="nav" className="bg-blue-ineof">
       {({ open }) => (
         <>
-          <div className="max-w-7xl p-2 mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Link href="/">
-                    <span>
-                      <Image
-                        className="h-40 w-40"
-                        src={IneofLogo}
-                        alt="Logo INEOF"
-                        width={50}
-                        height={50}
-                      />
-                    </span>
-                  </Link>
-                </div>
-                <div className="hidden md:block">
-                  <div className="ml-10 flex items-baseline space-x-4">
+          <div className="w-full bg-blue-ineof">
+            <div className="max-w-7xl mx-auto px-4 sm:px-4 lg:px-4">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Link href="/">
+                      <span>
+                        <Image
+                          className="h-40 w-40"
+                          src={IneofLogo}
+                          alt="Logo INEOF"
+                          width={50}
+                          height={50}
+                          priority
+                        />
+                      </span>
+                    </Link>
+                  </div>
+                  <div className="hidden md:flex items-center justify-center md:justify-start">
                     {navigation.map((item) => (
                       <Link key={item.name} href={item.href}>
                         <span
@@ -90,29 +95,26 @@ const Header: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              </div>
 
-              <div className="hidden md:block">
-                <div className="ml-4 flex items-center md:ml-6">
+                <div className="hidden md:flex items-center space-x-6">
                   {user ? (
                     <>
                       <button className="bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
                         <span className="sr-only">Visualizar Notificações</span>
                         <BellIcon className="h-6 w-6" aria-hidden="true" />
                       </button>
-                      <Menu as="div" className="ml-3 relative">
-                        <div>
-                          <MenuButton className=" max-w-xs bg-gray-800 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
-                            <span className="sr-only">Abrir Menu de Usuário</span>
-                            <Image
-                              className="h-8 w-8 rounded-full "
-                              src={user?.perfilImagem || userImage}
-                              alt="User"
-                              width={32}
-                              height={32}
-                            />
-                          </MenuButton>
-                        </div>
+                      <Menu as="div" className="relative">
+                        <MenuButton className="max-w-xs bg-gray-800 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                          <span className="sr-only">Abrir Menu de Usuário</span>
+                          <Image
+                            className="h-8 w-8 rounded-full"
+                            src={user?.perfilImagem || userImage}
+                            alt="User"
+                            width={32}
+                            height={32}
+                            priority
+                          />
+                        </MenuButton>
                         <Transition
                           as={Fragment}
                           enter="transition ease-out duration-100"
@@ -123,8 +125,8 @@ const Header: React.FC = () => {
                           leaveTo="transform opacity-0 scale-95"
                         >
                           <MenuItems
-                            className="origin-top-right absolute right-0 mt-2 w-48 hover:rounded-md  rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
-                            style={{ zIndex: 1000 }} // Adicionando z-index aqui
+                            className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                            style={{ zIndex: 1000 }}
                           >
                             {profile.map((item) => (
                               <MenuItem key={item}>
@@ -143,6 +145,14 @@ const Header: React.FC = () => {
                               </MenuItem>
                             ))}
                             <MenuItem>
+                              <Link
+                                href="/configurations"
+                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-ineof hover:text-blue-ineof hover:rounded-md"
+                              >
+                                Configurações
+                              </Link>
+                            </MenuItem>
+                            <MenuItem>
                               <button
                                 onClick={handleLogout}
                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-ineof hover:text-blue-ineof hover:rounded-md"
@@ -155,33 +165,34 @@ const Header: React.FC = () => {
                       </Menu>
                     </>
                   ) : (
-                    <div className="ml-10 flex items-baseline space-x-4">
+                    <div className="flex items-baseline space-x-4">
                       <Link
                         href="/auth/login"
-                        className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                        className="text-gray-300 hover:bg-green-ineof hover:text-blue-ineof px-3 py-2 rounded-md text-sm font-medium"
                       >
-                        Login
+                        LOGIN
                       </Link>
                       <Link
                         href="/auth/register"
-                        className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                        className="text-gray-300 hover:bg-green-ineof hover:text-blue-ineof px-3 py-2 rounded-md text-sm font-medium"
                       >
-                        Registro
+                        REGISTRO
                       </Link>
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div className="-mr-2 flex md:hidden">
-                <DisclosureButton className="bg-green-ineof inline-flex items-center justify-center p-2 rounded-md hover:rounded-md text-blue-ineof hover:text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
-                  <span className="sr-only">Abrir Menu</span>
-                  {open ? (
-                    <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                  ) : (
-                    <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                  )}
-                </DisclosureButton>
+                {/* Menu mobile */}
+                <div className="-mr-2 flex md:hidden">
+                  <DisclosureButton className="bg-green-ineof inline-flex items-center justify-center p-2 rounded-md hover:rounded-md text-blue-ineof hover:text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                    <span className="sr-only">Abrir Menu</span>
+                    {open ? (
+                      <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                    ) : (
+                      <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                    )}
+                  </DisclosureButton>
+                </div>
               </div>
             </div>
           </div>
@@ -212,17 +223,27 @@ const Header: React.FC = () => {
                       className="h-10 w-10 rounded-full"
                       src={user?.perfilImagem || userImage}
                       alt="User"
+                      width={50}
+                      height={50}
+                    
+                      priority
                     />
                   </div>
                   <div className="ml-3">
-                    <div className="text-base font-medium text-white">{user?.idUsuario}</div>
-                    <div className="text-sm font-medium text-gray-400">{user?.email}</div>
+                    <div className="text-base font-medium text-white">
+                      {user?.nomeDeUsuario}
+                    </div>
+                    <div className="text-sm font-medium text-gray-400">
+                      {user?.email}
+                    </div>
                   </div>
                   <button className="ml-auto bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
                     <span className="sr-only">Visualizar Notificações</span>
                     <BellIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
-                  <span className="ml-2 text-sm font-medium text-gray-400">Notificações</span>
+                  <span className="ml-2 text-sm font-medium text-gray-400">
+                    Notificações
+                  </span>
                 </div>
                 <div className="mt-3 space-y-1 px-2">
                   {profile.map((item) => (
@@ -241,6 +262,13 @@ const Header: React.FC = () => {
                       {item}
                     </DisclosureButton>
                   ))}
+                  <DisclosureButton
+                    as="a"
+                    href="/configurations"
+                    className="block px-4 py-2 text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-md"
+                  >
+                    Configurações
+                  </DisclosureButton>
                   <DisclosureButton
                     as="a"
                     href="#"
