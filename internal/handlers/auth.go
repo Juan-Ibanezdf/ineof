@@ -57,22 +57,37 @@ func generateRefreshToken(idUsuario string) (string, error) {
 	return token.SignedString(JwtSecret)
 }
 
+// Função para definir o cookie de CSRF token
+func setCSRFCookie(w http.ResponseWriter) {
+	csrfToken := generateCSRFToken()
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		Expires:  time.Now().Add(4 * time.Hour),
+		HttpOnly: false, // O frontend precisa acessar este cookie
+		Secure:   false,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
 // Função para logar o usuário e gerar tokens de autenticação e CSRF
 func LoginUser(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Decodificar as credenciais do usuário
 		var creds struct {
 			NomeDeUsuario   string `json:"nomeDeUsuario"`
 			Senha           string `json:"senha"`
 			Email           string `json:"email"`
 			ManterConectado bool   `json:"manterConectado"`
 		}
+
+		// Decodifica as credenciais enviadas na requisição
 		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
 
-		// Buscar usuário no banco de dados
+		// Busca o usuário no banco de dados
 		var usuario models.Usuario
 		err := db.QueryRow(context.Background(), `
 			SELECT id_usuario, nome_de_usuario, senha, email, nivel_permissao, COALESCE(perfil_imagem, ''), refresh_token
@@ -84,12 +99,14 @@ func LoginUser(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Gerar tokens
+		// Gera o access token (JWT)
 		accessToken, err := generateAccessToken(usuario.ID, usuario.NivelPermissao, usuario.NomeDeUsuario, usuario.Email, *usuario.PerfilImagem)
 		if err != nil {
 			http.Error(w, "Falha ao gerar token de acesso", http.StatusInternalServerError)
 			return
 		}
+
+		// Gera o refresh token, se 'ManterConectado' for true
 		var refreshToken string
 		if creds.ManterConectado {
 			refreshToken, err = generateRefreshToken(usuario.ID)
@@ -104,32 +121,45 @@ func LoginUser(db *pgxpool.Pool) http.HandlerFunc {
 			}
 		}
 
-		// Definir cookies de autenticação
+		// Captura o IP do último login
+		ip := r.RemoteAddr
+		// Captura a hora atual para o último login
+		now := time.Now()
+
+		// Atualiza as colunas de último login e IP no banco de dados
+		_, err = db.Exec(context.Background(), `UPDATE usuarios SET ultimo_login = $1, ip_ultimo_login = $2 WHERE id_usuario = $3`, now, ip, usuario.ID)
+		if err != nil {
+			http.Error(w, "Falha ao atualizar informações de login", http.StatusInternalServerError)
+			return
+		}
+
+		// Define os cookies de autenticação (sem 'secure' para localhost)
 		http.SetCookie(w, &http.Cookie{
 			Name:     "token",
 			Value:    accessToken,
 			Expires:  time.Now().Add(4 * time.Hour),
-			HttpOnly: true,
-			Secure:   os.Getenv("NODE_ENV") == "production",
+			HttpOnly: false, // Proteger contra JavaScript
+			Secure:   false, // SEM secure em desenvolvimento
 			Path:     "/",
-			SameSite: http.SameSiteLaxMode,
+			SameSite: http.SameSiteLaxMode, // Lax em desenvolvimento
 		})
+
 		if creds.ManterConectado {
 			http.SetCookie(w, &http.Cookie{
 				Name:     "refresh_token",
 				Value:    refreshToken,
-				Expires:  time.Now().Add(30 * 24 * time.Hour),
-				HttpOnly: true,
-				Secure:   os.Getenv("NODE_ENV") == "production",
+				Expires:  time.Now().Add(30 * 24 * time.Hour), // 30 dias
+				HttpOnly: true,                                // Proteger contra JavaScript
+				Secure:   false,                               // SEM secure em desenvolvimento
 				Path:     "/",
-				SameSite: http.SameSiteLaxMode,
+				SameSite: http.SameSiteLaxMode, // Lax em desenvolvimento
 			})
 		}
 
-		// Gerar e definir o cookie de CSRF token
+		// Define o cookie de CSRF token (também sem 'secure' em localhost)
 		setCSRFCookie(w)
 
-		// Responder com o token de acesso, refresh token (se houver), e dados do usuário
+		// Envia a resposta com o token de acesso e dados do usuário
 		w.Header().Set("Content-Type", "application/json")
 		response := map[string]interface{}{
 			"message": "Login bem-sucedido",
@@ -141,26 +171,10 @@ func LoginUser(db *pgxpool.Pool) http.HandlerFunc {
 				"perfilImagem":   usuario.PerfilImagem,
 				"nivelPermissao": usuario.NivelPermissao,
 			},
-		}
-		if creds.ManterConectado {
-			response["refreshToken"] = refreshToken
+			"refreshToken": refreshToken, // Retorna o refreshToken, se gerado
 		}
 		json.NewEncoder(w).Encode(response)
 	}
-}
-
-// Função para gerar e definir o cookie de CSRF token
-func setCSRFCookie(w http.ResponseWriter) {
-	csrfToken := generateCSRFToken()
-	http.SetCookie(w, &http.Cookie{
-		Name:     "csrf_token",
-		Value:    csrfToken,
-		Expires:  time.Now().Add(4 * time.Hour),
-		HttpOnly: false, // Não precisa ser HttpOnly pois será acessado pelo frontend
-		Secure:   os.Getenv("NODE_ENV") == "production",
-		Path:     "/",
-		SameSite: http.SameSiteLaxMode,
-	})
 }
 
 // RegisterUser registra um novo usuário e associa o cargo "Nenhum"

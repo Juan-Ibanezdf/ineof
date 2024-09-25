@@ -1,3 +1,7 @@
 {
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/perfil/profile/[id]/page": "app/perfil/profile/[id]/page.js",
+  "/eoceano/page": "app/eoceano/page.js",
+  "/auth/register/page": "app/auth/register/page.js"
 }

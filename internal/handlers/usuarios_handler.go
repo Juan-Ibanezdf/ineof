@@ -4,6 +4,7 @@ import (
 	"api/internal/models"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -159,35 +160,91 @@ func GetPerfilUsuarioByID(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Extrai o ID do usuário das claims do token
+		// Extrai o ID do usuário das claims do token JWT
 		idFromToken, ok := (*claims)["idUsuario"].(string)
 		if !ok {
 			http.Error(w, "ID de usuário inválido no token", http.StatusUnauthorized)
 			return
 		}
 
-		// Busca os dados do perfil que o usuário pode visualizar, incluindo id_usuario
+		// Busca os dados do perfil do usuário no banco de dados
 		var usuario models.Usuario
 		err = db.QueryRow(context.Background(), `
-			SELECT id_usuario, nome_de_usuario, senha, email, nivel_permissao, nome_completo, perfil_imagem, 
-				data_criacao, data_atualizacao, curriculo_lattes, telefone, ocupacao, termos_de_uso, 
-				descricao, status_ativacao, email_verificado, ultimo_login, ip_ultimo_login, pais, estado, 
-				cidade, matricula, instituicao 
+			SELECT id_usuario, nome_de_usuario, email, nivel_permissao, nome_completo, perfil_imagem, 
+				curriculo_lattes, telefone, ocupacao, termos_de_uso, descricao, status_ativacao, 
+				email_verificado, ultimo_login, ip_ultimo_login, pais, estado, cidade, matricula, instituicao 
 			FROM usuarios WHERE id_usuario = $1`, idFromToken).Scan(
-			&usuario.ID, &usuario.NomeDeUsuario, &usuario.Senha, &usuario.Email, &usuario.NivelPermissao, &usuario.NomeCompleto,
-			&usuario.PerfilImagem, &usuario.DataCriacao, &usuario.DataAtualizacao, &usuario.CurriculoLattes,
-			&usuario.Telefone, &usuario.Ocupacao, &usuario.TermosDeUso, &usuario.Descricao,
-			&usuario.StatusAtivacao, &usuario.EmailVerificado, &usuario.UltimoLogin, &usuario.IpUltimoLogin,
-			&usuario.Pais, &usuario.Estado, &usuario.Cidade, &usuario.Matricula, &usuario.Instituicao)
+			&usuario.ID, &usuario.NomeDeUsuario, &usuario.Email, &usuario.NivelPermissao,
+			&usuario.NomeCompleto, &usuario.PerfilImagem, &usuario.CurriculoLattes, &usuario.Telefone,
+			&usuario.Ocupacao, &usuario.TermosDeUso, &usuario.Descricao, &usuario.StatusAtivacao,
+			&usuario.EmailVerificado, &usuario.UltimoLogin, &usuario.IpUltimoLogin, &usuario.Pais,
+			&usuario.Estado, &usuario.Cidade, &usuario.Matricula, &usuario.Instituicao)
 
 		if err != nil {
 			http.Error(w, "Usuário não encontrado", http.StatusNotFound)
 			return
 		}
 
-		// Retorna os dados do perfil como JSON, incluindo id_usuario
+		// Retorna os dados do perfil como JSON
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(usuario)
+	}
+}
+
+func UpdatePerfilUsuario(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Verifica o token JWT
+		cookie, err := r.Cookie("token")
+		if err != nil {
+			http.Error(w, "Token não encontrado", http.StatusUnauthorized)
+			return
+		}
+
+		// Parseia o token JWT
+		claims := &jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
+			return JwtSecret, nil
+		})
+		if err != nil || !token.Valid {
+			http.Error(w, "Token inválido", http.StatusUnauthorized)
+			return
+		}
+
+		// Extrai o ID do usuário
+		idFromToken, ok := (*claims)["idUsuario"].(string)
+		if !ok {
+			http.Error(w, "ID de usuário inválido no token", http.StatusUnauthorized)
+			return
+		}
+
+		// Decodifica o corpo da requisição
+		var usuario models.Usuario
+		if err := json.NewDecoder(r.Body).Decode(&usuario); err != nil {
+			http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Log para verificar o corpo da requisição recebido
+		log.Printf("Dados recebidos para atualização: %+v\n", usuario)
+
+		// Atualiza os dados no banco de dados
+		_, err = db.Exec(context.Background(), `
+			UPDATE usuarios 
+			SET nome_de_usuario = $1, senha = $2, email = $3, nome_completo = $4, perfil_imagem = $5, 
+				curriculo_lattes = $6, telefone = $7, ocupacao = $8, descricao = $9, 
+				pais = $10, estado = $11, cidade = $12, matricula = $13, instituicao = $14 
+			WHERE id_usuario = $15`,
+			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NomeCompleto, usuario.PerfilImagem,
+			usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.Descricao,
+			usuario.Pais, usuario.Estado, usuario.Cidade, usuario.Matricula, usuario.Instituicao, idFromToken)
+
+		if err != nil {
+			http.Error(w, "Failed to update perfil: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Perfil atualizado com sucesso"))
 	}
 }
 
@@ -330,35 +387,6 @@ func GetUsuariosByCargo(db *pgxpool.Pool) http.HandlerFunc {
 		// Retornar a lista de usuários e seus cargos como JSON
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(usuarios)
-	}
-}
-
-// UpdatePerfilUsuario atualiza apenas os campos permitidos do perfil do usuario
-func UpdatePerfilUsuario(db *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		var usuario models.Usuario
-		if err := json.NewDecoder(r.Body).Decode(&usuario); err != nil {
-			http.Error(w, "Invalid input", http.StatusBadRequest)
-			return
-		}
-
-		_, err := db.Exec(context.Background(), `
-			UPDATE usuarios 
-			SET nome_de_usuario = $1, senha = $2, email = $3, nome_completo = $4, perfil_imagem = $5, 
-			curriculo_lattes = $6, telefone = $7, ocupacao = $8, descricao = $9, 
-			pais = $10, estado = $11, cidade = $12, matricula = $13, instituicao = $14 
-			WHERE id_usuario = $15`,
-			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NomeCompleto, usuario.PerfilImagem,
-			usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.Descricao,
-			usuario.Pais, usuario.Estado, usuario.Cidade, usuario.Matricula, usuario.Instituicao, id)
-		if err != nil {
-			http.Error(w, "Failed to update perfil: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Perfil updated successfully"))
 	}
 }
 

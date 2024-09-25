@@ -22,7 +22,7 @@ function classNames(...classes: string[]) {
 }
 
 const Header: React.FC = () => {
-  const { user, signOut } = useContext(AuthContext); // Puxa o `user` e `signOut` do contexto de autenticação
+  const { user, signOut, loading } = useContext(AuthContext); // Puxa o `user`, `loading` e `signOut` do contexto de autenticação
   const [isAdministrator, setIsAdministrator] = useState(false);
 
   useEffect(() => {
@@ -53,6 +53,11 @@ const Header: React.FC = () => {
   const handleLogout = () => {
     signOut(); // Chama a função de logout
   };
+
+  // Se ainda está carregando o estado de autenticação, retorna null ou um spinner
+  if (loading) {
+    return null; // Ou algum tipo de loader/spinner para indicar que está carregando
+  }
 
   return (
     <Disclosure as="nav" className="bg-blue-ineof">
