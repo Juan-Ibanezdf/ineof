@@ -210,7 +210,7 @@ func UpdatePerfilUsuario(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Extrai o ID do usuário
+		// Extrai o ID do usuário do token
 		idFromToken, ok := (*claims)["idUsuario"].(string)
 		if !ok {
 			http.Error(w, "ID de usuário inválido no token", http.StatusUnauthorized)
@@ -227,13 +227,37 @@ func UpdatePerfilUsuario(db *pgxpool.Pool) http.HandlerFunc {
 		// Log para verificar o corpo da requisição recebido
 		log.Printf("Dados recebidos para atualização: %+v\n", usuario)
 
+		// Se a senha for fornecida, criptografá-la antes de salvar
+		if usuario.Senha != "" {
+			if !passwordRegex.MatchString(usuario.Senha) {
+				http.Error(w, "A senha deve conter pelo menos 8 caracteres.", http.StatusBadRequest)
+				return
+			}
+
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(usuario.Senha), bcrypt.DefaultCost)
+			if err != nil {
+				http.Error(w, "Erro ao criptografar senha", http.StatusInternalServerError)
+				return
+			}
+			usuario.Senha = string(hashedPassword)
+		} else {
+			// Caso a senha não tenha sido enviada na requisição, manter a senha atual
+			var currentPassword string
+			err := db.QueryRow(context.Background(), "SELECT senha FROM usuarios WHERE id_usuario=$1", idFromToken).Scan(&currentPassword)
+			if err != nil {
+				http.Error(w, "Erro ao recuperar senha atual", http.StatusInternalServerError)
+				return
+			}
+			usuario.Senha = currentPassword // Mantém a senha atual
+		}
+
 		// Atualiza os dados no banco de dados
 		_, err = db.Exec(context.Background(), `
-			UPDATE usuarios 
-			SET nome_de_usuario = $1, senha = $2, email = $3, nome_completo = $4, perfil_imagem = $5, 
-				curriculo_lattes = $6, telefone = $7, ocupacao = $8, descricao = $9, 
-				pais = $10, estado = $11, cidade = $12, matricula = $13, instituicao = $14 
-			WHERE id_usuario = $15`,
+            UPDATE usuarios 
+            SET nome_de_usuario = $1, senha = $2, email = $3, nome_completo = $4, perfil_imagem = $5, 
+                curriculo_lattes = $6, telefone = $7, ocupacao = $8, descricao = $9, 
+                pais = $10, estado = $11, cidade = $12, matricula = $13, instituicao = $14 
+            WHERE id_usuario = $15`,
 			usuario.NomeDeUsuario, usuario.Senha, usuario.Email, usuario.NomeCompleto, usuario.PerfilImagem,
 			usuario.CurriculoLattes, usuario.Telefone, usuario.Ocupacao, usuario.Descricao,
 			usuario.Pais, usuario.Estado, usuario.Cidade, usuario.Matricula, usuario.Instituicao, idFromToken)
