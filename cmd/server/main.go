@@ -41,7 +41,7 @@ func main() {
 	r.Post("/api/auth/register", handlers.RegisterUser(conn))
 	r.Post("/api/auth/refresh", handlers.RefreshToken(conn))
 	r.Get("/api/publicacoes", handlers.GetPublicacoesComFiltro(conn))
-	r.Get("/api/publicacoes/{id}", handlers.GetPublicacaoByID(conn))
+	r.Get("/api/publicacoes/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlug(conn))
 	r.Get("/api/noticias", handlers.GetAllNoticiasComFiltro(conn))
 	r.Get("/api/noticias/{id}", handlers.GetNoticiaByID(conn))
 	r.Get("/usuarios/cargo/{cargo_id}", handlers.GetUsuariosByCargo(conn))
@@ -61,13 +61,21 @@ func main() {
 
 		})
 
-		// Rotas protegidas de Publicações (criar, atualizar, deletar)
+		// Definindo as rotas de leitura (não precisam de validação CSRF)
 		r.Route("/publicacoes", func(r chi.Router) {
-			r.Use(middleware.AuthorizationMiddleware("colaborador")) // Verifica se o nível mínimo é 'colaborador'
-			r.Use(middleware.ValidateCSRFToken)                      // Adicionar validação de CSRF em todas as requisições dentro de favoritos (se necessário)
-			r.Post("/", handlers.CreatePublicacao(conn))             // Cria uma nova publicação
-			r.Put("/{id}", handlers.UpdatePublicacao(conn))          // Atualiza uma publicação existente
-			r.Delete("/{id}", handlers.DeletePublicacao(conn))       // Deleta uma publicação por ID
+			// Nova rota para buscar publicações do usuário autenticado
+			r.Get("/usuario", handlers.GetPublicacoesByUsuario(conn))
+			// Atualizando a rota no backend para aceitar identifier e slug
+
+			// Atualizando a rota no backend para aceitar identifier e slug
+			r.Get("/usuario/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlugDoUsuario(conn))
+
+			// Apenas rotas que alteram o estado precisam de validação CSRF
+			r.With(middleware.ValidateCSRFToken).Group(func(r chi.Router) {
+				r.Post("/", handlers.CreatePublicacao(conn))       // Cria uma nova publicação
+				r.Put("/{id}", handlers.UpdatePublicacao(conn))    // Atualiza uma publicação existente
+				r.Delete("/{id}", handlers.DeletePublicacao(conn)) // Deleta uma publicação por ID
+			})
 		})
 
 		// Rotas de favoritos

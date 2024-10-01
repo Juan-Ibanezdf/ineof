@@ -1,4 +1,4 @@
-"use client";  
+"use client";
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
@@ -13,8 +13,8 @@ interface Publicacao {
   resumo: string;
   categoria: string;
   banner: string;
-  palavrasChave: string;
-  autores: string;
+  palavrasChave: string[];
+  autores: string[];
   publicacoes: string;
   revisadoPor: string;
   slug: string;
@@ -26,7 +26,6 @@ interface Publicacao {
   dataCriacao: Date;
   dataModificacao: Date;
   visualizacoes: number;
-  // Adicione mais propriedades, se necessário
 }
 
 const PublicacoesPage: React.FC = () => {

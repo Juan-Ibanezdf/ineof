@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/page": [
+    "/publicacoes/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/publicacoes/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,25 +11,30 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
+    "/publicacoes/publicacao/[identifier]/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/publicacoes/publicacao/[identifier]/[slug]/page.js"
+    ],
     "/auth/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/auth/login/page.js"
     ],
-    "/auth/register/page": [
+    "/perfil/publicacoes/minhas-publicacoes/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/auth/register/page.js"
+      "static/chunks/app/perfil/publicacoes/minhas-publicacoes/page.js"
     ],
-    "/perfil/profile/[id]/page": [
+    "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/perfil/profile/[id]/page.js"
-    ],
-    "/eosolar/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/eosolar/page.js"
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

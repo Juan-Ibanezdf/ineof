@@ -1,7 +1,8 @@
 {
-  "/page": "app/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/publicacoes/page": "app/publicacoes/page.js",
+  "/publicacoes/publicacao/[identifier]/[slug]/page": "app/publicacoes/publicacao/[identifier]/[slug]/page.js",
   "/auth/login/page": "app/auth/login/page.js",
-  "/auth/register/page": "app/auth/register/page.js",
-  "/perfil/profile/[id]/page": "app/perfil/profile/[id]/page.js",
-  "/eosolar/page": "app/eosolar/page.js"
+  "/page": "app/page.js",
+  "/perfil/publicacoes/minhas-publicacoes/page": "app/perfil/publicacoes/minhas-publicacoes/page.js"
 }

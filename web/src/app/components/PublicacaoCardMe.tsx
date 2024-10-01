@@ -1,6 +1,6 @@
 // components/PublicacaoCardMe.tsx
 import React from "react";
-import { useRouter }  from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 
 interface Publicacao {
   idPublicacao: string;
@@ -8,15 +8,13 @@ interface Publicacao {
   resumo: string;
   categoria: string;
   banner: string;
-  palavrasChave: string;
-  autores: string;
+  palavrasChave: string[];  // Mudança aqui para aceitar array de strings
+  autores: string[];
   publicacoes: string;
   revisadoPor: string;
   slug: string;
   visibilidade: boolean;
-  user: string;
   identifier: string;
-  pdf: Buffer | null;
   link: string | null;
   dataCriacao: Date;
   dataModificacao: Date;

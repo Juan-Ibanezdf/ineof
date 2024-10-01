@@ -1,5 +1,7 @@
+"use client";
+
+import { useRouter } from "next/navigation"; // Certifique-se de usar 'next/navigation' para App Router
 import React from "react";
-import { useRouter } from "next/router";
 
 interface Publicacao {
   idPublicacao: string;
@@ -7,8 +9,8 @@ interface Publicacao {
   resumo: string;
   categoria: string;
   banner: string;
-  palavrasChave: string;
-  autores: string;
+  palavrasChave: string[];
+  autores: string[];
   publicacoes: string;
   revisadoPor: string;
   slug: string;
@@ -20,7 +22,6 @@ interface Publicacao {
   dataCriacao: Date;
   dataModificacao: Date;
   visualizacoes: number;
-  // Adicione mais propriedades, se necessário
 }
 
 interface PublicacaoCardProps {
@@ -28,7 +29,7 @@ interface PublicacaoCardProps {
 }
 
 const PublicacaoCard: React.FC<PublicacaoCardProps> = ({ publicacao }) => {
-  const router = useRouter();
+  const router = useRouter(); // Certifique-se de que isso está correto
 
   const redirectToPublicacao = () => {
     router.push(`/publicacoes/publicacao/${publicacao.identifier}/${publicacao.slug}`);

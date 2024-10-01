@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -67,7 +68,7 @@ func createFavorito(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// getAllFavoritos retorna todos os favoritos do usuário autenticado
+// getAllFavoritos retorna todos os favoritos do usuário autenticado com suporte à paginação
 func getAllFavoritos(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := extractUserIDFromToken(r)
@@ -76,10 +77,28 @@ func getAllFavoritos(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		// Obtendo os parâmetros de paginação
+		paginaStr := r.URL.Query().Get("pagina")
+		itensPorPaginaStr := r.URL.Query().Get("itens_por_pagina")
+
+		// Valores padrão para paginação
+		pagina := 1
+		itensPorPagina := 10
+		if paginaStr != "" {
+			pagina, _ = strconv.Atoi(paginaStr)
+		}
+		if itensPorPaginaStr != "" {
+			itensPorPagina, _ = strconv.Atoi(itensPorPaginaStr)
+		}
+
+		offset := (pagina - 1) * itensPorPagina
+
+		// Consulta para obter os favoritos do usuário com paginação
 		rows, err := db.Query(context.Background(), `
 			SELECT id_usuario, id_publicacao, data_favorito 
 			FROM Favoritos 
-			WHERE id_usuario = $1`, userID)
+			WHERE id_usuario = $1
+			LIMIT $2 OFFSET $3`, userID, itensPorPagina, offset)
 		if err != nil {
 			http.Error(w, "Failed to query favoritos", http.StatusInternalServerError)
 			return
@@ -97,6 +116,7 @@ func getAllFavoritos(db *pgxpool.Pool) http.HandlerFunc {
 			favoritos = append(favoritos, favorito)
 		}
 
+		// Retorna os favoritos em formato JSON
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(favoritos)
 	}
