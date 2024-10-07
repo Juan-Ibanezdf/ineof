@@ -1,25 +1,15 @@
 {
   "pages": {
-    "/publicacoes/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/publicacoes/page.js"
+      "static/chunks/app/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
-    ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/publicacoes/publicacao/[identifier]/[slug]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/publicacoes/publicacao/[identifier]/[slug]/page.js"
     ],
     "/auth/login/page": [
       "static/chunks/webpack.js",
@@ -31,10 +21,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/perfil/publicacoes/minhas-publicacoes/page.js"
     ],
-    "/_not-found/page": [
+    "/perfil/publicacoes/minhas-publicacoes/publicacao/[identifier]/[slug]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/perfil/publicacoes/minhas-publicacoes/publicacao/[identifier]/[slug]/page.js"
     ]
   }
 }

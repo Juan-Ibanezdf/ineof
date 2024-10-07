@@ -65,9 +65,14 @@ func main() {
 		r.Route("/publicacoes", func(r chi.Router) {
 			// Nova rota para buscar publicações do usuário autenticado
 			r.Get("/usuario", handlers.GetPublicacoesByUsuario(conn))
-			// Atualizando a rota no backend para aceitar identifier e slug
 
-			// Atualizando a rota no backend para aceitar identifier e slug
+			// Rota para buscar publicações com filtros e paginação
+			r.Get("/filtro", handlers.GetPublicacoesComFiltro(conn))
+
+			// Rota para buscar publicações com filtros e paginação
+			r.Get("/", handlers.GetPublicacoesSemFiltro(conn))
+
+			// Rota para buscar uma publicação específica do usuário usando identifier e slug
 			r.Get("/usuario/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlugDoUsuario(conn))
 
 			// Apenas rotas que alteram o estado precisam de validação CSRF

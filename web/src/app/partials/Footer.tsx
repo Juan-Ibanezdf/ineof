@@ -100,7 +100,7 @@ const Footer = () => {
                   href="https://portalpadrao.ufma.br/ineof"
                   target="_blank"
                 >
-                  Site Institucional do INEOF Antigo
+                  Site Institucional do INEOF (Antigo)
                 </a>
               </li>
             </ul>

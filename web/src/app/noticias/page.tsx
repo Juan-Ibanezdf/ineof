@@ -65,7 +65,7 @@ const NoticiasPage: React.FC = () => {
         <div key={i} className="flex bg-green-600">
           {publicacaoRow.map((publicacao) => (
             <div key={publicacao.idPublicacao} className="w-1/4 p-4">
-              <PublicacaoCard publicacao={publicacao} />
+              
             </div>
           ))}
         </div>

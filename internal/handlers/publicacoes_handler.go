@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,11 +20,13 @@ func PublicacoesRouter(db *pgxpool.Pool) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/", CreatePublicacao(db))
 	r.Get("/{identifier}/{slug}", GetPublicacaoByIdentifierESlug(db)) // Atualizado
-	r.Get("/", GetPublicacoesComFiltro(db))                           // Nova rota para busca com filtro
+	r.Get("/filtro", GetPublicacoesComFiltro(db))                     // Nova rota para busca com filtro
 	r.Put("/{id}", UpdatePublicacao(db))
 	r.Delete("/{id}", DeletePublicacao(db))
 	r.Get("/usuario", GetPublicacoesByUsuario(db))
 	r.Get("/usuario/{identifier}/{slug}", GetPublicacaoByIdentifierESlugDoUsuario(db))
+	r.Get("/", GetPublicacoesSemFiltro(db))
+
 	return r
 }
 
@@ -67,8 +68,17 @@ func CreatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Atribui o idUsuario ao objeto de publicação
+		// Obtém o nome do usuário a partir das reivindicações do token
+		nomeDeUsuario, ok := (*claims)["nomeDeUsuario"].(string)
+		if !ok || nomeDeUsuario == "" {
+			log.Println("Nome de usuário não encontrado no token") // Log do erro
+			http.Error(w, "User name not found in token", http.StatusUnauthorized)
+			return
+		}
+
+		// Atribui o idUsuario e o nomeDeUsuario ao objeto de publicação
 		publicacao.IDUsuario = idUsuario
+		publicacao.NomeDeUsuario = &nomeDeUsuario
 
 		// Gera automaticamente o slug usando o título da publicação
 		slug := utils.Slugify(publicacao.Titulo)
@@ -142,21 +152,21 @@ func UpdatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// GetPublicacoesComFiltro retorna todas as publicacoes com filtros opcionais de titulo, categoria, autores, palavras-chave e tags, além de paginação
 func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Obtendo os parâmetros de busca
-		titulo := r.URL.Query().Get("titulo")
+		searchTerm := r.URL.Query().Get("searchTerm")
 		categoria := r.URL.Query().Get("categoria")
-		autores := r.URL.Query().Get("autores")
 		palavrasChave := r.URL.Query().Get("palavras_chave")
-		tags := r.URL.Query().Get("tags")
+		autores := r.URL.Query().Get("autores")
+		anoInicio := r.URL.Query().Get("ano_inicio")
+		anoFim := r.URL.Query().Get("ano_fim")
 		paginaStr := r.URL.Query().Get("pagina")
 		itensPorPaginaStr := r.URL.Query().Get("itens_por_pagina")
 
 		// Valores padrão para paginação
 		pagina := 1
-		itensPorPagina := 12
+		itensPorPagina := 8
 		if paginaStr != "" {
 			pagina, _ = strconv.Atoi(paginaStr)
 		}
@@ -166,60 +176,90 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 
 		offset := (pagina - 1) * itensPorPagina
 
-		// Construir a consulta SQL dinamicamente com base nos parâmetros
+		// Construir a consulta SQL dinamicamente com base nos parâmetros para contagem total
+		queryCount := `
+            SELECT COUNT(*)
+            FROM Publicacoes
+            WHERE 1=1`
+
+		// Consulta base para as publicações com paginação
 		query := `
-			SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
-			publicacoes, data_criacao, data_modificacao, link, visualizacoes, revisado_por, slug, 
-			identifier, visibilidade, notas, id_usuario 
-			FROM Publicacoes
-			WHERE 1=1`
+            SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
+            publicacoes, data_criacao, data_modificacao, link, visualizacoes, revisado_por, slug, 
+            identifier, visibilidade, notas, id_usuario 
+            FROM Publicacoes
+            WHERE 1=1`
 
 		params := []interface{}{}
 		paramIndex := 1
 
-		// Verifica se o parâmetro título foi passado e ajusta a query
-		if titulo != "" {
-			query += ` AND titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			params = append(params, titulo)
+		// Filtros opcionais
+		if searchTerm != "" {
+			query += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			query += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			query += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			query += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave))`
+			queryCount += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			queryCount += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			queryCount += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			queryCount += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave))`
+			params = append(params, searchTerm)
 			paramIndex++
 		}
 
-		// Verifica se o parâmetro categoria foi passado e ajusta a query
 		if categoria != "" {
 			query += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			queryCount += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
 			params = append(params, categoria)
 			paramIndex++
 		}
 
-		// Verifica se o parâmetro autores foi passado e ajusta a query
-		if autores != "" {
-			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
-			params = append(params, autores)
-			paramIndex++
-		}
-
-		// Verifica se o parâmetro palavras_chave foi passado e ajusta a query
 		if palavrasChave != "" {
 			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave)`
+			queryCount += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave)`
 			params = append(params, palavrasChave)
 			paramIndex++
 		}
 
-		// Verifica se o parâmetro tags foi passado e ajusta a query
-		if tags != "" {
-			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave)`
-			params = append(params, tags)
+		if autores != "" {
+			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			queryCount += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			params = append(params, autores)
 			paramIndex++
 		}
 
-		// Se nenhum filtro for passado, retorna as publicações mais recentes
+		// Filtro por intervalo de datas (Ano Início e Ano Fim)
+		if anoInicio != "" && anoFim != "" {
+			query += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
+			queryCount += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
+			params = append(params, anoInicio, anoFim)
+			paramIndex += 2
+		}
+
+		// Adicionar ordenação e paginação à query
 		query += ` ORDER BY data_criacao DESC LIMIT $` + strconv.Itoa(paramIndex) + ` OFFSET $` + strconv.Itoa(paramIndex+1)
 		params = append(params, itensPorPagina, offset)
 
-		// Executar a consulta
+		// Log para depuração
+		log.Printf("Executando consulta de contagem: %s com parâmetros: %v", queryCount, params)
+
+		// Executar a consulta para contar o total de publicações
+		var totalPublicacoes int
+		err := db.QueryRow(context.Background(), queryCount, params[:paramIndex-1]...).Scan(&totalPublicacoes)
+		if err != nil {
+			http.Error(w, "Failed to count publicacoes", http.StatusInternalServerError)
+			log.Printf("Erro ao contar publicacoes: %v", err)
+			return
+		}
+
+		// Log para depuração
+		log.Printf("Executando consulta de busca: %s com parâmetros: %v", query, params)
+
+		// Executar a consulta para buscar as publicações com filtros e paginação
 		rows, err := db.Query(context.Background(), query, params...)
 		if err != nil {
 			http.Error(w, "Failed to query publicacoes", http.StatusInternalServerError)
+			log.Printf("Erro ao buscar publicacoes: %v", err)
 			return
 		}
 		defer rows.Close()
@@ -236,6 +276,59 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 				&publicacao.Visibilidade, &publicacao.Notas, &publicacao.IDUsuario)
 			if err != nil {
 				http.Error(w, "Failed to scan publicacao", http.StatusInternalServerError)
+				log.Printf("Erro ao escanear publicacao: %v", err)
+				return
+			}
+			publicacoes = append(publicacoes, publicacao)
+		}
+
+		// Retorna as publicações e o total em formato JSON
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
+			"total":       totalPublicacoes,
+			"publicacoes": publicacoes,
+		})
+		if err != nil {
+			http.Error(w, "Failed to encode publicacoes", http.StatusInternalServerError)
+			log.Printf("Erro ao codificar JSON de publicacoes: %v", err)
+		}
+	}
+}
+
+func GetPublicacoesSemFiltro(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Consulta base para pegar todas as publicações
+		query := `
+			SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
+			publicacoes, data_criacao, data_modificacao, link, visualizacoes, revisado_por, slug, 
+			identifier, visibilidade, notas, id_usuario 
+			FROM Publicacoes`
+
+		// Log para depuração
+		log.Printf("Executando consulta: %s", query)
+
+		// Executar a consulta para buscar todas as publicações
+		rows, err := db.Query(context.Background(), query)
+		if err != nil {
+			http.Error(w, "Failed to query publicacoes", http.StatusInternalServerError)
+			log.Printf("Erro ao buscar publicacoes: %v", err)
+			return
+		}
+		defer rows.Close()
+
+		// Preencher a lista de publicações com os resultados da query
+		var publicacoes []models.Publicacao
+		for rows.Next() {
+			var publicacao models.Publicacao
+			err := rows.Scan(
+				&publicacao.ID, &publicacao.Titulo, &publicacao.Subtitulo, &publicacao.PalavrasChave, &publicacao.Banner,
+				&publicacao.Resumo, &publicacao.NomeDeUsuario, &publicacao.Categoria, &publicacao.Autores,
+				&publicacao.Publicacoes, &publicacao.DataCriacao, &publicacao.DataModificacao, &publicacao.Link,
+				&publicacao.Visualizacoes, &publicacao.RevisadoPor, &publicacao.Slug, &publicacao.Identifier,
+				&publicacao.Visibilidade, &publicacao.Notas, &publicacao.IDUsuario)
+			if err != nil {
+				http.Error(w, "Failed to scan publicacao", http.StatusInternalServerError)
+				log.Printf("Erro ao escanear publicacao: %v", err)
 				return
 			}
 			publicacoes = append(publicacoes, publicacao)
@@ -243,7 +336,13 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 
 		// Retorna as publicações em formato JSON
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(publicacoes)
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
+			"publicacoes": publicacoes,
+		})
+		if err != nil {
+			http.Error(w, "Failed to encode publicacoes", http.StatusInternalServerError)
+			log.Printf("Erro ao codificar JSON de publicacoes: %v", err)
+		}
 	}
 }
 
@@ -310,17 +409,17 @@ func DeletePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// GetPublicacoesByUsuario retorna as publicacoes do usuario autenticado com suporte a paginacao e filtros opcionais
 func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extrai o token do cookie
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			http.Error(w, "Token não encontrado", http.StatusUnauthorized)
+			log.Println("Token não encontrado:", err)
 			return
 		}
 
-		// Valida e decodifica o token JWT usando o segredo JWT importado de configs
+		// Valida e decodifica o token JWT usando o segredo JWT
 		claims := &jwt.MapClaims{}
 		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
 			return configs.JwtSecret, nil
@@ -328,35 +427,31 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 
 		if err != nil || !token.Valid {
 			http.Error(w, "Token inválido: "+err.Error(), http.StatusUnauthorized)
+			log.Println("Token inválido:", err)
 			return
 		}
 
-		// Obtém o idUsuario a partir das reivindicações do token
-		idUsuario, ok := (*claims)["idUsuario"].(string)
-		if !ok || idUsuario == "" {
-			http.Error(w, "User ID not found in token", http.StatusUnauthorized)
+		// Obtém o nome de usuário a partir das reivindicações do token
+		nomeDeUsuario, ok := (*claims)["nomeDeUsuario"].(string)
+		if !ok || nomeDeUsuario == "" {
+			http.Error(w, "Nome de usuário não encontrado no token", http.StatusUnauthorized)
+			log.Println("Nome de usuário não encontrado no token")
 			return
 		}
-
-		// Certifique-se de que idUsuario é um UUID válido antes de executar a consulta
-		if _, err := uuid.Parse(idUsuario); err != nil {
-			http.Error(w, "User ID inválido", http.StatusBadRequest)
-			return
-		}
-
-		// Log para depuração
-		log.Printf("idUsuario extraído do token: %s", idUsuario)
 
 		// Obtenção dos parâmetros de busca e paginação
-		titulo := r.URL.Query().Get("titulo")
+		searchTerm := r.URL.Query().Get("searchTerm")
 		categoria := r.URL.Query().Get("categoria")
+		palavrasChave := r.URL.Query().Get("palavras_chave")
 		autores := r.URL.Query().Get("autores")
+		anoInicio := r.URL.Query().Get("ano_inicio")
+		anoFim := r.URL.Query().Get("ano_fim")
 		paginaStr := r.URL.Query().Get("pagina")
 		itensPorPaginaStr := r.URL.Query().Get("itens_por_pagina")
 
 		// Valores padrão para paginação
 		pagina := 1
-		itensPorPagina := 10
+		itensPorPagina := 8
 		if paginaStr != "" {
 			pagina, _ = strconv.Atoi(paginaStr)
 		}
@@ -366,47 +461,89 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 
 		offset := (pagina - 1) * itensPorPagina
 
-		// Construção da query SQL com filtros opcionais
+		// Construir a consulta SQL dinamicamente com base nos parâmetros para contagem total
+		queryCount := `
+            SELECT COUNT(*)
+            FROM Publicacoes
+            WHERE nome_de_usuario = $1`
+
+		// Consulta base para as publicações com paginação
 		query := `
             SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
             publicacoes, data_criacao, data_modificacao, link, visualizacoes, revisado_por, slug, 
             identifier, visibilidade, notas, id_usuario 
             FROM Publicacoes
-            WHERE id_usuario = $1`
+            WHERE nome_de_usuario = $1`
 
-		params := []interface{}{idUsuario}
+		params := []interface{}{nomeDeUsuario} // Primeiro parâmetro: nome de usuário do token
 		paramIndex := 2
 
-		// Aplicação de filtros opcionais
-		if titulo != "" {
-			query += ` AND titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			params = append(params, titulo)
+		// Filtros opcionais
+		if searchTerm != "" {
+			query += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			query += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			query += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			query += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave))`
+			queryCount += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			queryCount += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			queryCount += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			queryCount += ` OR $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave))`
+			params = append(params, searchTerm)
 			paramIndex++
 		}
+
 		if categoria != "" {
 			query += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			queryCount += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
 			params = append(params, categoria)
 			paramIndex++
 		}
+
+		if palavrasChave != "" {
+			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave)`
+			queryCount += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (palavras_chave)`
+			params = append(params, palavrasChave)
+			paramIndex++
+		}
+
 		if autores != "" {
 			query += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
+			queryCount += ` AND $` + strconv.Itoa(paramIndex) + ` = ANY (autores)`
 			params = append(params, autores)
 			paramIndex++
 		}
 
-		// Ordenação e paginação
+		// Filtro por intervalo de datas (Ano Início e Ano Fim)
+		if anoInicio != "" && anoFim != "" {
+			query += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
+			queryCount += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
+			params = append(params, anoInicio, anoFim)
+			paramIndex += 2
+		}
+
+		// Adicionar ordenação e paginação à query
 		query += ` ORDER BY data_criacao DESC LIMIT $` + strconv.Itoa(paramIndex) + ` OFFSET $` + strconv.Itoa(paramIndex+1)
 		params = append(params, itensPorPagina, offset)
 
-		// Execução da consulta
+		// Executar a consulta para contar o total de publicações
+		var totalPublicacoes int
+		err = db.QueryRow(context.Background(), queryCount, params[:paramIndex-1]...).Scan(&totalPublicacoes)
+		if err != nil {
+			http.Error(w, "Erro ao contar publicações", http.StatusInternalServerError)
+			log.Println("Erro ao contar publicações:", err)
+			return
+		}
+
+		// Executar a consulta para buscar as publicações com filtros e paginação
 		rows, err := db.Query(context.Background(), query, params...)
 		if err != nil {
-			http.Error(w, "Failed to query publicacoes", http.StatusInternalServerError)
+			http.Error(w, "Erro ao buscar publicações", http.StatusInternalServerError)
+			log.Println("Erro ao buscar publicações:", err)
 			return
 		}
 		defer rows.Close()
 
-		// Preenchimento da lista de publicações com os resultados da query
+		// Preencher a lista de publicações com os resultados da query
 		var publicacoes []models.Publicacao
 		for rows.Next() {
 			var publicacao models.Publicacao
@@ -417,15 +554,23 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 				&publicacao.Visualizacoes, &publicacao.RevisadoPor, &publicacao.Slug, &publicacao.Identifier,
 				&publicacao.Visibilidade, &publicacao.Notas, &publicacao.IDUsuario)
 			if err != nil {
-				http.Error(w, "Failed to scan publicacao", http.StatusInternalServerError)
+				http.Error(w, "Erro ao escanear publicações", http.StatusInternalServerError)
+				log.Println("Erro ao escanear publicação:", err)
 				return
 			}
 			publicacoes = append(publicacoes, publicacao)
 		}
 
-		// Retorna as publicações em formato JSON
+		// Retorna as publicações e o total em formato JSON
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(publicacoes)
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
+			"total":       totalPublicacoes,
+			"publicacoes": publicacoes,
+		})
+		if err != nil {
+			http.Error(w, "Erro ao codificar resposta JSON", http.StatusInternalServerError)
+			log.Println("Erro ao codificar resposta JSON:", err)
+		}
 	}
 }
 
