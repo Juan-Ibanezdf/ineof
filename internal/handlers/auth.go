@@ -4,6 +4,8 @@ import (
 	"api/internal/models"
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -337,22 +339,73 @@ func RefreshToken(db *pgxpool.Pool) http.HandlerFunc {
 
 // Função para obter o usuário autenticado
 func Me(w http.ResponseWriter, r *http.Request) {
+	// Tenta obter o token dos cookies
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		http.Error(w, "Token não encontrado", http.StatusUnauthorized)
 		return
 	}
 
+	// Extrai as claims do token JWT
 	claims := &jwt.MapClaims{}
 	token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
+		// Verifica se o método de assinatura é HS256
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			// Retorna o erro corretamente
+			return nil, fmt.Errorf("método de assinatura inesperado: %v", token.Header["alg"])
+		}
 		return JwtSecret, nil
 	})
 
-	if err != nil || !token.Valid {
+	if err != nil {
+		// Logando o erro para entender melhor o problema
+		log.Println("Erro ao validar o token:", err)
+		http.Error(w, "Token inválido ou expirado", http.StatusUnauthorized)
+		return
+	}
+
+	if !token.Valid {
+		log.Println("Token inválido:", token)
 		http.Error(w, "Token inválido", http.StatusUnauthorized)
 		return
 	}
 
+	// Se o token é válido, retorna as claims
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(claims)
+}
+
+// Função para validar o token JWT
+func ValidateToken(w http.ResponseWriter, r *http.Request) {
+	// Obtenha o token do cabeçalho Authorization
+	tokenString := r.Header.Get("Authorization")
+	if tokenString == "" {
+		http.Error(w, "Token não fornecido", http.StatusUnauthorized)
+		return
+	}
+
+	// Remove o "Bearer " do início do token, se necessário
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+		tokenString = tokenString[7:]
+	}
+
+	// Valida o token
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Verifica se o método de assinatura é HS256
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("método de assinatura inesperado: %v", token.Header["alg"])
+		}
+		return JwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		log.Println("Erro ao validar o token:", err)
+		http.Error(w, "Token inválido ou expirado", http.StatusUnauthorized)
+		return
+	}
+
+	// Se o token for válido, retorna uma resposta de sucesso
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"message": "Token válido"}`))
 }

@@ -24,49 +24,48 @@ const NewPublicationPage: React.FC = () => {
 
   const api = getAPIClient();
 
-  // Transformar campos de array de strings como 'palavrasChave' e 'autores' em arrays no envio
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  // Transformar campos de array de strings como 'palavrasChave' e 'autores' em strings separadas por vírgula
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  try {
-    const cookies = parseCookies();
-    const csrfToken = cookies['csrf_token'];
+    try {
+      const cookies = parseCookies();
+      const csrfToken = cookies['csrf_token'];
 
-    const response = await api.post('/api/publicacoes', {
-      titulo: title,
-      subtitulo: subtitle || null,
-      palavras_chave: palavrasChave.split(',').map(item => item.trim()), // Converter string para array
-      banner: banner || null,
-      resumo: summary || null,
-      categoria: categoria || null,
-      autores: autores.split(',').map(item => item.trim()), // Converter string para array
-      link: link || null,
-      revisado_por: revisadoPor || null,
-      visibilidade: true,
-      notas: notas || null,
-      publicacoes: publicacoes || null,
-      visualizacoes: 0,
-      data_criacao: new Date().toISOString(),
-      data_modificacao: new Date().toISOString(),
-    }, {
-      headers: {
-        'X-CSRF-Token': csrfToken,
-      },
-      withCredentials: true,
-    });
+      const response = await api.post('/api/publicacoes', {
+        titulo: title,
+        subtitulo: subtitle || null,
+        palavras_chave: palavrasChave, // Agora é uma string
+        banner: banner || null,
+        resumo: summary || null,
+        categoria: categoria || null,
+        autores: autores, // Agora é uma string
+        link: link || null,
+        revisado_por: revisadoPor || null,
+        visibilidade: true,
+        notas: notas || null,
+        publicacoes: publicacoes || null,
+        visualizacoes: 0,
+        data_criacao: new Date().toISOString(),
+        data_modificacao: new Date().toISOString(),
+      }, {
+        headers: {
+          'X-CSRF-Token': csrfToken,
+        },
+        withCredentials: true,
+      });
 
-    console.log('Publicação criada com sucesso:', response.data);
-    setShowButtons(true);
-  } catch (error: any) {
-    // Exibir o erro detalhado no console
-    if (error.response) {
-      console.error('Erro ao criar publicação:', error.response.data); // Detalhes da resposta do servidor
-    } else {
-      console.error('Erro desconhecido:', error.message);
+      console.log('Publicação criada com sucesso:', response.data);
+      setShowButtons(true);
+    } catch (error: any) {
+      // Exibir o erro detalhado no console
+      if (error.response) {
+        console.error('Erro ao criar publicação:', error.response.data); // Detalhes da resposta do servidor
+      } else {
+        console.error('Erro desconhecido:', error.message);
+      }
     }
-  }
-};
-
+  };
 
   const handleGoHome = () => {
     router.push('/');

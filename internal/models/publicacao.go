@@ -9,12 +9,12 @@ type Publicacao struct {
 	ID              string    `json:"id_publicacao"`             // Alterado para string para UUID
 	Titulo          string    `json:"titulo"`                    // Título da publicação
 	Subtitulo       *string   `json:"subtitulo,omitempty"`       // Subtítulo opcional
-	PalavrasChave   *[]string `json:"palavras_chave,omitempty"`  // Palavras-chave como array de strings
+	PalavrasChave   *string   `json:"palavras_chave,omitempty"`  // Palavras-chave como string (separadas por vírgula)
 	Banner          *string   `json:"banner,omitempty"`          // URL do banner opcional
 	Resumo          *string   `json:"resumo,omitempty"`          // Resumo opcional
 	NomeDeUsuario   *string   `json:"nome_de_usuario,omitempty"` // Nome do usuário que criou a publicação
 	Categoria       *string   `json:"categoria,omitempty"`       // Categoria opcional
-	Autores         *[]string `json:"autores,omitempty"`         // Autores como array de strings
+	Autores         *string   `json:"autores,omitempty"`         // Autores como string (separados por vírgula)
 	Publicacoes     *string   `json:"publicacoes,omitempty"`     // Conteúdo da publicação opcional
 	DataCriacao     time.Time `json:"data_criacao"`              // Data de criação da publicação
 	DataModificacao time.Time `json:"data_modificacao"`          // Data de modificação da publicação

@@ -45,6 +45,8 @@ func main() {
 	r.Get("/api/noticias", handlers.GetAllNoticiasComFiltro(conn))
 	r.Get("/api/noticias/{id}", handlers.GetNoticiaByID(conn))
 	r.Get("/usuarios/cargo/{cargo_id}", handlers.GetUsuariosByCargo(conn))
+	// Adiciona a rota de validação de token
+	r.Get("/api/auth/validate-token", handlers.ValidateToken)
 
 	// Agrupa rotas que necessitam de autenticação
 	r.Route("/api", func(r chi.Router) {
@@ -76,7 +78,7 @@ func main() {
 			r.Get("/usuario/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlugDoUsuario(conn))
 
 			// Apenas rotas que alteram o estado precisam de validação CSRF
-			r.With(middleware.ValidateCSRFToken).Group(func(r chi.Router) {
+			r.With(middleware.AuthorizationMiddleware("colaborador")).With(middleware.ValidateCSRFToken).Group(func(r chi.Router) {
 				r.Post("/", handlers.CreatePublicacao(conn))       // Cria uma nova publicação
 				r.Put("/{id}", handlers.UpdatePublicacao(conn))    // Atualiza uma publicação existente
 				r.Delete("/{id}", handlers.DeletePublicacao(conn)) // Deleta uma publicação por ID

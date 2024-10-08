@@ -10,8 +10,8 @@ import { AuthContext } from "@/contexts/AuthContext";
 interface Publicacao {
   idPublicacao: string;
   titulo: string;
-  autores: string[];
-  palavrasChave: string[];
+  autores: string; // Agora é string
+  palavrasChave: string; // Agora é string
   categoria: string;
   identifier: string;
   slug: string;
@@ -65,8 +65,8 @@ const PublicacoesPage: React.FC = () => {
       const publicacoesMapeadas = response.data.publicacoes.map((publicacao: any) => ({
         idPublicacao: publicacao.id_publicacao,
         titulo: publicacao.titulo,
-        autores: publicacao.autores,
-        palavrasChave: publicacao.palavras_chave,
+        autores: publicacao.autores, // Agora string
+        palavrasChave: publicacao.palavras_chave, // Agora string
         categoria: publicacao.categoria,
         identifier: publicacao.identifier,
         slug: publicacao.slug,
@@ -133,12 +133,12 @@ const PublicacoesPage: React.FC = () => {
 
           <div className="flex items-center mt-2">
             <FaUser className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.autores.join("; ")}</p>
+            <p className="text-sm text-gray-600">{pub.autores}</p> {/* Agora string */}
           </div>
 
           <div className="flex items-center mt-1">
             <FaKey className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.palavrasChave.join(", ")}</p>
+            <p className="text-sm text-gray-600">{pub.palavrasChave}</p> {/* Agora string */}
           </div>
 
           <div className="mt-1 text-sm text-gray-600">

@@ -195,16 +195,17 @@ const Footer = () => {
                   Eventos
                 </a>
               </li>{" "}
-              <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Professores
-                </a>
-              </li>
+             
               <li>
                 <a className="hover:text-green-ineof" href="#">
                   Nossa Equipe
                 </a>
               </li>{" "}
+              <li>
+                <a className="hover:text-green-ineof" href="#">
+                  Galeria
+                </a>
+              </li>
             </ul>
           </div>
 

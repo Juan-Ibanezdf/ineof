@@ -49,12 +49,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const handleSignOut = useCallback(async () => {
     try {
       const cookies = parseCookies();
-      const csrfToken = cookies['csrf_token']; // Obtém o CSRF token dos cookies
-  
+      const csrfToken = cookies['csrf_token'];
+
       await axios.post(`${API_URL}/api/auth/logout`, {}, {
         withCredentials: true,
         headers: {
-          'X-CSRF-Token': csrfToken, // Envia o CSRF token no cabeçalho
+          'X-CSRF-Token': csrfToken,
         },
       });
     } catch (error) {
@@ -62,40 +62,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       const cookieOptions = {
         path: '/',
-        secure: false, // SEM secure em localhost
+        secure: false,
         sameSite: 'lax',
       };
       destroyCookie(undefined, 'token', cookieOptions);
       destroyCookie(undefined, 'refresh_token', cookieOptions);
-      destroyCookie(undefined, 'csrf_token', cookieOptions); // Remove o CSRF token
+      destroyCookie(undefined, 'csrf_token', cookieOptions);
       setUser(null);
       setIsAdministrator(false);
-      
-      // Use caminho absoluto para garantir redirecionamento correto
-      router.push('/auth/login'); // Caminho absoluto que sempre irá para a rota de login
+      router.push('/auth/login');
     }
   }, [router]);
 
-  // useEffect para verificar o token e recuperar as informações do usuário
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const getTokenFromCookies = () => {
-          const cookies = document.cookie.split('; ').reduce((acc, current) => {
-            const [name, value] = current.split('=');
-            acc[name] = value;
-            return acc;
-          }, {} as { [key: string]: string });
-          return cookies['token']; // Retorna o valor do cookie `token`
-        };
-
-        const token = getTokenFromCookies(); // Lê o token dos cookies manualmente
-        console.log("Todos os cookies disponíveis:", document.cookie); // Depuração dos cookies
-        console.log("Token obtido dos cookies:", token); // Depuração do token
+        const cookies = parseCookies();
+        const token = cookies['token']; // Agora pegamos somente dos cookies
 
         if (token) {
-          const userInfo = await recoverUserInformation(token); // Recupera as informações do usuário usando o token
-          
+          const userInfo = await recoverUserInformation(token);
+
           if (userInfo && userInfo.usuario) {
             setUser({
               idUsuario: userInfo.usuario.idUsuario,
@@ -106,32 +93,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
               token: userInfo.usuario.token,
             });
             setIsAdministrator(userInfo.usuario.nivelPermissao === 'superusuario');
-          } else {
-            // Se o token for inválido, faça o logout
-            handleSignOut();
           }
         } else {
-          console.log('Nenhum token encontrado. Encerrando carregamento...');
-          setLoading(false); // Se não houver token, o carregamento termina
+          console.log('Nenhum token encontrado. Carregamento interrompido...');
         }
       } catch (error) {
         console.error('Erro ao recuperar as informações do usuário:', error);
-        setLoading(false); // Evita a exclusão automática dos cookies
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserData(); // Executa a função ao montar o componente
+    fetchUserData();
   }, [handleSignOut]);
 
-  // Função de login
   async function signIn({ email, senha, nomeDeUsuario, manterConectado }: SignInData) {
-    setLoading(true); // Definir estado de carregamento enquanto faz o login
+    setLoading(true);
     try {
       const response = await signInRequest({ email, senha, nomeDeUsuario, manterConectado });
-
-      console.log('Resposta do servidor ao fazer login:', response);
 
       const isUserAdmin = response.usuario.nivelPermissao === 'superusuario';
       setIsAdministrator(isUserAdmin);
@@ -144,28 +123,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         token: response.token,
       });
 
-      // Definir cookies após login (SEM secure em localhost)
+      // Certificando que o cookie `token` é corretamente configurado
       setCookie(undefined, 'token', response.token, {
         maxAge: 4 * 60 * 60, // 4 horas
         path: '/',
-        secure: false, // SEM secure em localhost
-        sameSite: 'lax', // SameSite Lax para desenvolvimento
+        secure: false, // Altere para `true` se usar HTTPS em produção
+        sameSite: 'lax', // 'lax' é o padrão, pode ser ajustado para 'none' ou 'strict'
       });
 
       if (manterConectado && response.refreshToken) {
         setCookie(undefined, 'refresh_token', response.refreshToken, {
           maxAge: 30 * 24 * 60 * 60, // 30 dias
           path: '/',
-          secure: false, // SEM secure em localhost
-          sameSite: 'lax', // SameSite Lax para desenvolvimento
+          secure: false, // Altere para `true` se usar HTTPS em produção
+          sameSite: 'lax',
         });
       }
 
-      // Armazena o CSRF token
       if (response.csrfToken) {
         setCookie(undefined, 'csrf_token', response.csrfToken, {
-          path: '/', // Disponível em toda a aplicação
-          secure: false, // SEM secure em localhost
+          path: '/',
+          secure: false,
           sameSite: 'lax',
         });
       }
@@ -174,13 +152,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('Erro ao fazer login:', error);
     } finally {
-      setLoading(false); // Remover estado de carregamento após login
+      setLoading(false);
     }
   }
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, signIn, signOut: handleSignOut, isAdministrator, loading }}>
-      {!loading && children} {/* Garante que o conteúdo só seja exibido após o carregamento */}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

@@ -24,7 +24,7 @@ interface SignInRequestData {
 export async function signInRequest({ email, senha, nomeDeUsuario, manterConectado }: SignInRequestData) {
   try {
     const cookies = parseCookies();
-    const csrfToken = cookies['csrf_token']; // Obtém o CSRF token dos cookies
+    const csrfToken = cookies['csrf_token'];
 
     const response = await axios.post(`${API_URL}/api/auth/login`, {
       email,
@@ -34,43 +34,41 @@ export async function signInRequest({ email, senha, nomeDeUsuario, manterConecta
     }, {
       withCredentials: true,
       headers: {
-        'X-CSRF-Token': csrfToken, // Envia o CSRF token no cabeçalho
+        'X-CSRF-Token': csrfToken,
       }
     });
 
     const { token, refreshToken, usuario, csrfToken: newCsrfToken } = response.data;
 
-    // Definir cookies após login (SEM secure em localhost)
+    // Armazena o token apenas nos cookies
     setCookie(undefined, 'token', token, {
-      maxAge: 4 * 60 * 60, // 4 horas
+      maxAge: 4 * 60 * 60, // Persistente por 4 horas
       path: '/',
-      secure: false, // SEM secure em localhost
-      sameSite: 'lax', // SameSite Lax para desenvolvimento
+      secure: false,
+      sameSite: 'lax',
     });
 
-    // Atualiza o CSRF token nos cookies se um novo token for retornado
     if (newCsrfToken) {
       setCookie(undefined, 'csrf_token', newCsrfToken, {
-        path: '/', // Disponível em toda a aplicação
-        secure: false, // SEM secure em localhost
+        path: '/',
+        secure: false,
         sameSite: 'lax',
       });
     }
 
-    // Se "manter conectado", define o refresh token
     if (manterConectado && refreshToken) {
       setCookie(undefined, 'refresh_token', refreshToken, {
         maxAge: 30 * 24 * 60 * 60, // 30 dias
         path: '/',
-        secure: false, // SEM secure em localhost
-        sameSite: 'lax', // SameSite Lax para desenvolvimento
+        secure: false,
+        sameSite: 'lax',
       });
     }
 
     return {
       token,
       refreshToken,
-      csrfToken: newCsrfToken, // Retorna o CSRF token, se houver
+      csrfToken: newCsrfToken,
       usuario: {
         idUsuario: usuario.idUsuario,
         email: usuario.email,
@@ -85,17 +83,13 @@ export async function signInRequest({ email, senha, nomeDeUsuario, manterConecta
   }
 }
 
-// Função auxiliar para decodificar o JWT
-function parseJwt(token: string) {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`).join(''));
-
-  return JSON.parse(jsonPayload);
-}
-
 // Função para recuperar informações do usuário a partir do token via backend
-export async function recoverUserInformation(token: string): Promise<UserInfo | null> {
+export async function recoverUserInformation(token?: string): Promise<UserInfo | null> {
+  const cookies = parseCookies();
+
+  // Se o token não for passado, pega dos cookies
+  token = token ?? cookies['token'];
+
   if (!token) {
     console.log('Nenhum token encontrado.');
     return null;
@@ -107,10 +101,7 @@ export async function recoverUserInformation(token: string): Promise<UserInfo | 
     decodedToken = parseJwt(token);
   } catch (error) {
     console.error('Erro ao decodificar o token JWT:', error);
-    destroyCookie(undefined, 'token', { path: '/' });
-    destroyCookie(undefined, 'refresh_token', { path: '/' });
-    destroyCookie(undefined, 'csrf_token', { path: '/' }); // Remove o CSRF token também
-    throw new Error('Token inválido ou corrompido.');
+    return null; // Retorna null em vez de destruir o cookie se o token for inválido
   }
 
   // Valida o token no backend para garantir que ele é válido
@@ -122,7 +113,6 @@ export async function recoverUserInformation(token: string): Promise<UserInfo | 
       withCredentials: true,
     });
 
-    // Retorna as informações do usuário obtidas do token decodificado
     return {
       usuario: {
         idUsuario: decodedToken.idUsuario,
@@ -130,14 +120,20 @@ export async function recoverUserInformation(token: string): Promise<UserInfo | 
         email: decodedToken.email,
         perfilImagem: decodedToken.perfilImagem,
         nivelPermissao: decodedToken.nivelPermissao,
-        token: token, // Retorna o próprio token já que ele ainda é válido
+        token: token,
       }
     };
   } catch (error) {
     console.error('Erro ao validar o token no backend:', error);
-    destroyCookie(undefined, 'token', { path: '/' });
-    destroyCookie(undefined, 'refresh_token', { path: '/' });
-    destroyCookie(undefined, 'csrf_token', { path: '/' }); // Remove o CSRF token também
-    throw new Error('Token inválido ou expirado.');
+    return null; // Apenas retorna null e não destrói o cookie se houver um problema no backend
   }
+}
+
+// Função auxiliar para decodificar o JWT
+function parseJwt(token: string) {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`).join(''));
+
+  return JSON.parse(jsonPayload);
 }
