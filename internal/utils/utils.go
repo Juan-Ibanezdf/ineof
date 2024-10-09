@@ -64,11 +64,3 @@ func Slugify(s string) string {
 
 	return s
 }
-
-// ConvertArrayToPostgresArray converte um array de strings para o formato de array PostgreSQL
-func ConvertArrayToPostgresArray(arr *[]string) *[]string {
-	if arr == nil {
-		return &[]string{}
-	}
-	return arr
-}

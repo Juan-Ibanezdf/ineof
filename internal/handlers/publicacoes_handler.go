@@ -6,13 +6,16 @@ import (
 	"api/internal/utils"
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lib/pq"
 )
 
 // PublicacoesRouter configura as rotas para os handlers de Publicacoes
@@ -41,16 +44,12 @@ func CreatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// Verifica se palavras_chave e autores são strings
+		// Inicializa arrays vazios se palavras_chave e autores não estiverem definidos
 		if publicacao.PalavrasChave == nil {
-			// Se palavras_chave estiver nulo, inicializa como string vazia
-			emptyString := ""
-			publicacao.PalavrasChave = &emptyString
+			publicacao.PalavrasChave = []string{}
 		}
 		if publicacao.Autores == nil {
-			// Se autores estiver nulo, inicializa como string vazia
-			emptyString := ""
-			publicacao.Autores = &emptyString
+			publicacao.Autores = []string{}
 		}
 
 		// Extrai o token do cookie
@@ -109,12 +108,12 @@ func CreatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 			VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16, $17)`,
 			publicacao.Titulo,
 			publicacao.Subtitulo,
-			publicacao.PalavrasChave,
+			publicacao.PalavrasChave, // Agora um array []string
 			publicacao.Banner,
 			publicacao.Resumo,
 			publicacao.NomeDeUsuario,
 			publicacao.Categoria,
-			publicacao.Autores,
+			publicacao.Autores, // Também um array []string
 			publicacao.Publicacoes,
 			publicacao.Link,
 			publicacao.Visualizacoes,
@@ -123,7 +122,7 @@ func CreatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 			publicacao.Identifier,
 			publicacao.Visibilidade,
 			publicacao.Notas,
-			publicacao.IDUsuario,
+			publicacao.IDUsuario, // O ID do usuário deve ser o último valor, conforme a ordem das colunas
 		)
 		if err != nil {
 			log.Println("Falha ao criar publicação no banco de dados:", err) // Log do erro
@@ -136,26 +135,27 @@ func CreatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// UpdatePublicacao atualiza uma publicação existente
 func UpdatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 
-		var publicacao models.Publicacao
-		// Tenta decodificar o JSON recebido na requisição
-		if err := json.NewDecoder(r.Body).Decode(&publicacao); err != nil {
-			log.Println("Erro ao decodificar a publicação:", err)
-			http.Error(w, "Entrada inválida", http.StatusBadRequest)
+		log.Println("Recebendo requisição de atualização para a publicação com ID:", id)
+
+		if id == "" {
+			log.Println("Erro: ID da publicação não foi fornecido.")
+			http.Error(w, "ID da publicação não pode ser vazio", http.StatusBadRequest)
 			return
 		}
 
 		// Extrai o token do cookie
 		cookie, err := r.Cookie("token")
 		if err != nil {
-			log.Println("Token não encontrado:", err)
+			log.Println("Erro: Token não encontrado.", err)
 			http.Error(w, "Token não encontrado", http.StatusUnauthorized)
 			return
 		}
+
+		log.Println("Token recebido do cookie.")
 
 		// Valida e decodifica o token JWT
 		claims := &jwt.MapClaims{}
@@ -163,44 +163,115 @@ func UpdatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 			return configs.JwtSecret, nil
 		})
 		if err != nil || !token.Valid {
-			log.Println("Token inválido:", err)
-			http.Error(w, "Token inválido: "+err.Error(), http.StatusUnauthorized)
+			log.Println("Erro: Token inválido.", err)
+			http.Error(w, "Token inválido", http.StatusUnauthorized)
 			return
 		}
 
-		// Obtém o idUsuario e nomeDeUsuario a partir do token JWT
+		log.Println("Token JWT validado com sucesso.")
+
+		// Obtém o idUsuario a partir do token JWT
 		idUsuario, ok := (*claims)["idUsuario"].(string)
 		if !ok || idUsuario == "" {
+			log.Println("Erro: ID de usuário não encontrado no token.")
 			http.Error(w, "ID de usuário não encontrado no token", http.StatusUnauthorized)
 			return
 		}
-		nomeDeUsuario, ok := (*claims)["nomeDeUsuario"].(string)
-		if !ok || nomeDeUsuario == "" {
-			http.Error(w, "Nome de usuário não encontrado no token", http.StatusUnauthorized)
+
+		log.Println("ID do usuário autenticado:", idUsuario)
+
+		// Lê o corpo da requisição
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Println("Erro ao ler o corpo da requisição.", err)
+			http.Error(w, "Erro ao ler o corpo da requisição", http.StatusInternalServerError)
 			return
 		}
 
-		// Atribui o nome de usuário ao objeto de publicação
-		publicacao.NomeDeUsuario = &nomeDeUsuario
+		log.Println("Corpo da requisição recebido:", string(body))
 
-		// Atualizar a publicação no banco de dados
+		// Decodifica o JSON para a struct Publicacao
+		var publicacao models.Publicacao
+		if err := json.Unmarshal(body, &publicacao); err != nil {
+			log.Println("Erro ao decodificar o corpo da requisição.", err)
+			http.Error(w, "Erro ao decodificar o corpo da requisição", http.StatusBadRequest)
+			return
+		}
+
+		log.Println("Dados de publicação decodificados:", publicacao)
+
+		// Verifica se o título mudou, para gerar um novo slug se necessário
+		var novoSlug string
+		var tituloAntigo string
+
+		// Busca o título atual da publicação no banco de dados
+		err = db.QueryRow(context.Background(), "SELECT titulo FROM Publicacoes WHERE id_publicacao = $1", id).Scan(&tituloAntigo)
+		if err != nil {
+			log.Println("Erro ao buscar o título antigo da publicação:", err)
+			http.Error(w, "Erro ao buscar a publicação", http.StatusInternalServerError)
+			return
+		}
+
+		// Se o título mudou, gera um novo slug
+		if publicacao.Titulo != tituloAntigo {
+			novoSlug = utils.Slugify(publicacao.Titulo)
+			publicacao.Slug = novoSlug
+			log.Println("Título mudou. Novo slug gerado:", novoSlug)
+		} else {
+			novoSlug = publicacao.Slug // Mantém o slug existente
+			log.Println("Título não mudou. Mantendo o slug atual:", novoSlug)
+		}
+
+		// Atualiza apenas os campos permitidos, evitando campos imutáveis
+		query := `
+            UPDATE Publicacoes 
+            SET 
+                titulo = COALESCE(NULLIF($1, ''), titulo),
+                subtitulo = COALESCE(NULLIF($2, ''), subtitulo),
+                palavras_chave = $3::text[],  -- Atualiza diretamente o array
+                banner = COALESCE(NULLIF($4, ''), banner),
+                resumo = COALESCE(NULLIF($5, ''), resumo),
+                nome_de_usuario = COALESCE(NULLIF($6, ''), nome_de_usuario),
+                categoria = COALESCE(NULLIF($7, ''), categoria),
+                autores = $8::text[],  -- Atualiza diretamente o array
+                publicacoes = COALESCE(NULLIF($9, ''), publicacoes),
+                link = COALESCE(NULLIF($10, ''), link),
+                visualizacoes = $11,
+                slug = COALESCE(NULLIF($12, ''), slug),
+                notas = COALESCE(NULLIF($13, ''), notas),
+                data_modificacao = NOW()  -- Atualiza automaticamente a data de modificação
+            WHERE id_publicacao = $14 AND id_usuario = $15
+        `
+
+		log.Println("Query de atualização preparada.")
+
+		// Executar a query de atualização
 		_, err = db.Exec(context.Background(),
-			`UPDATE Publicacoes 
-            SET titulo = $1, subtitulo = $2, palavras_chave = $3, banner = $4, resumo = $5, 
-                nome_de_usuario = $6, categoria = $7, autores = $8, publicacoes = $9, 
-                data_modificacao = NOW(), link = $10, visualizacoes = $11, revisado_por = $12, 
-                slug = $13, visibilidade = $14, notas = $15 
-            WHERE id_publicacao = $16 AND id_usuario = $17`,
-			publicacao.Titulo, publicacao.Subtitulo, publicacao.PalavrasChave, publicacao.Banner,
-			publicacao.Resumo, publicacao.NomeDeUsuario, publicacao.Categoria, publicacao.Autores,
-			publicacao.Publicacoes, publicacao.Link, publicacao.Visualizacoes, publicacao.RevisadoPor,
-			publicacao.Slug, publicacao.Visibilidade, publicacao.Notas, id, idUsuario)
+			query,
+			publicacao.Titulo,
+			publicacao.Subtitulo,
+			pq.Array(publicacao.PalavrasChave), // Salva as palavras-chave como array
+			publicacao.Banner,
+			publicacao.Resumo,
+			publicacao.NomeDeUsuario,
+			publicacao.Categoria,
+			pq.Array(publicacao.Autores), // Salva os autores como array
+			publicacao.Publicacoes,
+			publicacao.Link,
+			publicacao.Visualizacoes,
+			novoSlug, // Usa o novo slug gerado, se o título mudou
+			publicacao.Notas,
+			id,        // ID da publicação
+			idUsuario, // ID do usuário que criou a publicação (pego do token)
+		)
 
 		if err != nil {
-			log.Println("Erro ao atualizar publicação:", err)
+			log.Println("Falha ao atualizar a publicação no banco de dados.", err)
 			http.Error(w, "Falha ao atualizar a publicação", http.StatusInternalServerError)
 			return
 		}
+
+		log.Println("Publicação com ID", id, "atualizada com sucesso.")
 
 		// Retornar sucesso
 		w.WriteHeader(http.StatusOK)
@@ -271,17 +342,19 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 			paramIndex++
 		}
 
+		// Filtro por palavras_chave (array)
 		if palavrasChave != "" {
-			query += ` AND palavras_chave ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` AND palavras_chave ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			params = append(params, palavrasChave)
+			query += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && palavras_chave`
+			queryCount += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && palavras_chave`
+			params = append(params, pq.Array(strings.Split(palavrasChave, ","))) // Converte a string de palavras-chave em array
 			paramIndex++
 		}
 
+		// Filtro por autores (array)
 		if autores != "" {
-			query += ` AND autores ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` AND autores ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			params = append(params, autores)
+			query += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && autores`
+			queryCount += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && autores`
+			params = append(params, pq.Array(strings.Split(autores, ","))) // Converte a string de autores em array
 			paramIndex++
 		}
 
@@ -373,8 +446,9 @@ func GetPublicacoesSemFiltro(db *pgxpool.Pool) http.HandlerFunc {
 		for rows.Next() {
 			var publicacao models.Publicacao
 			err := rows.Scan(
-				&publicacao.ID, &publicacao.Titulo, &publicacao.Subtitulo, &publicacao.PalavrasChave, &publicacao.Banner,
-				&publicacao.Resumo, &publicacao.NomeDeUsuario, &publicacao.Categoria, &publicacao.Autores,
+				&publicacao.ID, &publicacao.Titulo, &publicacao.Subtitulo, pq.Array(&publicacao.PalavrasChave), // Correto para array
+				&publicacao.Banner, &publicacao.Resumo, &publicacao.NomeDeUsuario, &publicacao.Categoria,
+				pq.Array(&publicacao.Autores), // Correto para array
 				&publicacao.Publicacoes, &publicacao.DataCriacao, &publicacao.DataModificacao, &publicacao.Link,
 				&publicacao.Visualizacoes, &publicacao.RevisadoPor, &publicacao.Slug, &publicacao.Identifier,
 				&publicacao.Visibilidade, &publicacao.Notas, &publicacao.IDUsuario)
@@ -417,7 +491,8 @@ func GetPublicacaoByIdentifierESlug(db *pgxpool.Pool) http.HandlerFunc {
 			SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
 			publicacoes, data_criacao, data_modificacao, link, visualizacoes, revisado_por, slug, 
 			identifier, visibilidade, notas, id_usuario 
-			FROM Publicacoes WHERE identifier = $1 AND slug = $2`, identifier, slug).Scan(
+			FROM Publicacoes 
+			WHERE identifier = $1 AND slug = $2`, identifier, slug).Scan(
 			&publicacao.ID, &publicacao.Titulo, &publicacao.Subtitulo, &publicacao.PalavrasChave, &publicacao.Banner,
 			&publicacao.Resumo, &publicacao.NomeDeUsuario, &publicacao.Categoria, &publicacao.Autores,
 			&publicacao.Publicacoes, &publicacao.DataCriacao, &publicacao.DataModificacao, &publicacao.Link,
@@ -429,7 +504,10 @@ func GetPublicacaoByIdentifierESlug(db *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		// Incrementa o número de visualizações
-		_, err = tx.Exec(context.Background(), `UPDATE Publicacoes SET visualizacoes = visualizacoes + 1 WHERE identifier = $1 AND slug = $2`, identifier, slug)
+		_, err = tx.Exec(context.Background(), `
+			UPDATE Publicacoes 
+			SET visualizacoes = visualizacoes + 1 
+			WHERE identifier = $1 AND slug = $2`, identifier, slug)
 		if err != nil {
 			http.Error(w, "Failed to update visualizacoes", http.StatusInternalServerError)
 			return

@@ -1,6 +1,4 @@
 {
-  "/perfil/publicacoes/nova-publicacao/page": "app/perfil/publicacoes/nova-publicacao/page.js",
   "/page": "app/page.js",
-  "/perfil/publicacoes/minhas-publicacoes/page": "app/perfil/publicacoes/minhas-publicacoes/page.js",
-  "/perfil/publicacoes/minhas-publicacoes/publicacao/[identifier]/[slug]/page": "app/perfil/publicacoes/minhas-publicacoes/publicacao/[identifier]/[slug]/page.js"
+  "/publicacoes/publicacao/[identifier]/[slug]/page": "app/publicacoes/publicacao/[identifier]/[slug]/page.js"
 }

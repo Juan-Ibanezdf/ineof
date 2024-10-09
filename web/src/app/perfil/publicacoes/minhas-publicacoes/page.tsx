@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaKey, FaTrashAlt } from "react-icons/fa";
+import { FaUser, FaKey, FaTrashAlt, FaEdit } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../../../components/Layout";
 import { AuthContext } from "@/contexts/AuthContext";
@@ -44,7 +44,15 @@ const PublicacoesPage: React.FC = () => {
   };
 
   const getPalavrasChave = () => {
-    return ["Palavras-chave", "IA", "Energia Solar", "Ondas", "Vento", "Hidrogênio", "Baterias"];
+    return [
+      "Palavras-chave",
+      "IA",
+      "Energia Solar",
+      "Ondas",
+      "Vento",
+      "Hidrogênio",
+      "Baterias",
+    ];
   };
 
   const fetchPublicacoes = useCallback(async () => {
@@ -58,30 +66,43 @@ const PublicacoesPage: React.FC = () => {
           categoria: filtroCategoria !== "Todos" ? filtroCategoria : undefined,
           ano_inicio: filtroAnoInicio,
           ano_fim: filtroAnoFim,
-          palavras_chave: filtroPalavrasChave !== "Todos" ? filtroPalavrasChave : undefined,
+          palavras_chave:
+            filtroPalavrasChave !== "Todos" ? filtroPalavrasChave : undefined,
         },
       });
 
-      const publicacoesMapeadas = response.data.publicacoes.map((publicacao: any) => ({
-        idPublicacao: publicacao.id_publicacao,
-        titulo: publicacao.titulo,
-        autores: publicacao.autores, // Agora string
-        palavrasChave: publicacao.palavras_chave, // Agora string
-        categoria: publicacao.categoria,
-        identifier: publicacao.identifier,
-        slug: publicacao.slug,
-        dataCriacao: new Date(publicacao.data_criacao),
-        dataModificacao: new Date(publicacao.data_modificacao),
-        visualizacoes: publicacao.visualizacoes,
-        resumo: publicacao.resumo,
-      }));
+      const publicacoesMapeadas = response.data.publicacoes.map(
+        (publicacao: any) => ({
+          idPublicacao: publicacao.id_publicacao,
+          titulo: publicacao.titulo,
+          autores: publicacao.autores.join(", "), // Adiciona vírgula e espaço entre autores
+          palavrasChave: publicacao.palavras_chave.join(", "), // Adiciona vírgula e espaço entre palavras-chave
+          categoria: publicacao.categoria,
+          identifier: publicacao.identifier,
+          slug: publicacao.slug,
+          dataCriacao: new Date(publicacao.data_criacao),
+          dataModificacao: new Date(publicacao.data_modificacao),
+          visualizacoes: publicacao.visualizacoes,
+          resumo:
+            publicacao.resumo.length > 70
+              ? publicacao.resumo.substring(0, 70) + "..."
+              : publicacao.resumo, // Limita o resumo
+        })
+      );
 
       setPublicacoes(publicacoesMapeadas);
       setTotalPublicacoes(response.data.total);
     } catch (error) {
       console.error("Erro ao obter as publicações", error);
     }
-  }, [paginaAtual, filtroCategoria, filtroAnoInicio, filtroAnoFim, filtroPalavrasChave, searchTerm]);
+  }, [
+    paginaAtual,
+    filtroCategoria,
+    filtroAnoInicio,
+    filtroAnoFim,
+    filtroPalavrasChave,
+    searchTerm,
+  ]);
 
   useEffect(() => {
     fetchPublicacoes();
@@ -125,7 +146,10 @@ const PublicacoesPage: React.FC = () => {
     }
 
     return publicacoes.map((pub) => (
-      <div key={pub.idPublicacao} className="py-4 border-b flex justify-between items-center">
+      <div
+        key={pub.idPublicacao}
+        className=" border-b flex justify-between items-center my-1"
+      >
         <div>
           <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">
             {pub.titulo}
@@ -133,32 +157,44 @@ const PublicacoesPage: React.FC = () => {
 
           <div className="flex items-center mt-2">
             <FaUser className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.autores}</p> {/* Agora string */}
+            <p className="text-sm text-gray-600">{pub.autores}</p>{" "}
+            {/* Agora com vírgula */}
           </div>
 
           <div className="flex items-center mt-1">
             <FaKey className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.palavrasChave}</p> {/* Agora string */}
+            <p className="text-sm text-gray-600">{pub.palavrasChave}</p>{" "}
+            {/* Agora com vírgula */}
           </div>
 
           <div className="mt-1 text-sm text-gray-600">
-            <strong>Resumo: </strong> {pub.resumo}
+            <strong>Resumo: </strong> {pub.resumo}{" "}
+            {/* Limita o resumo a 70 caracteres */}
           </div>
 
           <div className="flex items-center mt-1 text-sm text-gray-600">
             <span>
-              <strong>Data de criação:</strong> {pub.dataCriacao.toLocaleDateString()}
+              <strong>Data de criação:</strong>{" "}
+              {pub.dataCriacao.toLocaleDateString()}{" "}
+              {pub.dataCriacao.toLocaleTimeString()}
             </span>
             <span className="ml-4">
-              <strong>Última modificação:</strong> {pub.dataModificacao.toLocaleDateString()}
+              <strong>Última modificação:</strong>{" "}
+              {pub.dataModificacao.toLocaleDateString()}{" "}
+              {pub.dataModificacao.toLocaleTimeString()}
             </span>
             <span className="ml-4">
               <strong>Visualizações:</strong> {pub.visualizacoes}
             </span>
           </div>
 
-          <Link href={`/perfil/publicacoes/minhas-publicacoes/publicacao/${pub.identifier}/${pub.slug}`}>
-            <span className="inline-block mt-4 text-blue-500 hover:text-blue-700">Editar publicação</span>
+          <Link
+            href={`/perfil/publicacoes/minhas-publicacoes/publicacao/${pub.identifier}/${pub.slug}`}
+          >
+            <span className="inline-block mt-4 text-lg text-blue-500 hover:text-blue-700 flex items-center">
+              Editar publicação
+              <FaEdit className="ml-2 text-lg" />
+            </span>
           </Link>
         </div>
 
@@ -166,9 +202,9 @@ const PublicacoesPage: React.FC = () => {
           <>
             <button
               onClick={() => setConfirmDeleteId(pub.idPublicacao)}
-              className="text-gray-600 hover:text-red-500"
+              className=" ml-4 text-gray-600 hover:text-red-500"
             >
-              <FaTrashAlt size={20} />
+              <FaTrashAlt size={30} />
             </button>
 
             {confirmDeleteId === pub.idPublicacao && (
@@ -207,7 +243,9 @@ const PublicacoesPage: React.FC = () => {
         <button
           key={i}
           onClick={() => setPaginaAtual(i)}
-          className={`px-3 py-1 mx-1 rounded ${i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-3 py-1 mx-1 rounded ${
+            i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
         >
           {i}
         </button>
@@ -217,13 +255,19 @@ const PublicacoesPage: React.FC = () => {
     return (
       <div className="flex justify-start mt-4">
         {paginaAtual > 1 && (
-          <button onClick={() => setPaginaAtual(paginaAtual - 1)} className="px-3 py-1 mx-1 rounded bg-gray-200">
+          <button
+            onClick={() => setPaginaAtual(paginaAtual - 1)}
+            className="px-3 py-1 mx-1 rounded bg-gray-200"
+          >
             &lt;
           </button>
         )}
         {paginas}
         {paginaAtual < totalPaginas && (
-          <button onClick={() => setPaginaAtual(paginaAtual + 1)} className="px-3 py-1 mx-1 rounded bg-gray-200">
+          <button
+            onClick={() => setPaginaAtual(paginaAtual + 1)}
+            className="px-3 py-1 mx-1 rounded bg-gray-200"
+          >
             &gt;
           </button>
         )}
@@ -299,16 +343,24 @@ const PublicacoesPage: React.FC = () => {
             ))}
           </select>
 
-          <button onClick={filtrarPublicacoes} className="bg-blue-500 text-white p-2 rounded">
+          <button
+            onClick={filtrarPublicacoes}
+            className="bg-blue-500 text-white p-2 rounded"
+          >
             Buscar
           </button>
-          <button onClick={limparFiltros} className="bg-gray-400 text-white p-2 rounded ml-4">
+          <button
+            onClick={limparFiltros}
+            className="bg-gray-400 text-white p-2 rounded ml-4"
+          >
             Limpar Filtros
           </button>
         </div>
 
         {/* Lista de publicações */}
-        <div className="bg-white rounded shadow p-6 w-full lg:w-3/5">{renderPublicacoes()}</div>
+        <div className="bg-white rounded shadow p-6 w-full lg:w-3/5">
+          {renderPublicacoes()}
+        </div>
 
         {/* Paginação */}
         {renderPaginacao()}
@@ -316,11 +368,9 @@ const PublicacoesPage: React.FC = () => {
         {/* Botões para Nova Publicação e Favoritos */}
         <div className="mt-8 flex justify-start space-x-4">
           <Link href="/perfil/publicacoes/nova-publicacao">
-            <button className="bg-green-500 text-white px-4 py-2 rounded">Nova Publicação</button>
-          </Link>
-
-          <Link href="/perfil/favoritos">
-            <button className="bg-blue-500 text-white px-4 py-2 rounded">Favoritos</button>
+            <button className="bg-green-500 text-white px-4 py-2 rounded">
+              Nova Publicação
+            </button>
           </Link>
         </div>
       </div>

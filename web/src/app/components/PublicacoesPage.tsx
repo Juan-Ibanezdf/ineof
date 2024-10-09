@@ -10,8 +10,8 @@ interface Publicacao {
   resumo: string;
   categoria: string;
   banner: string;
-  palavrasChave: string; // Agora string
-  autores: string; // Agora string
+  palavrasChave: string[]; // Agora array
+  autores: string[]; // Agora array
   publicacoes: string;
   revisadoPor: string;
   slug: string;
@@ -42,8 +42,8 @@ const PublicacoesPage: React.FC = () => {
           resumo: publicacao.resumo,
           categoria: publicacao.categoria,
           banner: publicacao.banner,
-          palavrasChave: publicacao.palavras_chave, // Agora string
-          autores: publicacao.autores, // Agora string
+          palavrasChave: publicacao.palavras_chave, // Agora array
+          autores: publicacao.autores, // Agora array
           publicacoes: publicacao.publicacoes,
           revisadoPor: publicacao.revisado_por,
           slug: publicacao.slug,
@@ -94,7 +94,7 @@ const PublicacoesPage: React.FC = () => {
           {current > 0 && (
             <div className="flex-none w-1/4 mx-2 p-4 rounded-lg bg-white text-black shadow-lg transform scale-90 opacity-50">
               <h3 className="text-lg font-semibold">{publicacoes[current - 1].titulo}</h3>
-              <p>{publicacoes[current - 1].autores}</p>
+              <p>{publicacoes[current - 1].autores.join(', ')}</p> {/* Autores agora como string separada por vírgulas */}
             </div>
           )}
           
@@ -102,7 +102,7 @@ const PublicacoesPage: React.FC = () => {
           {currentPublicacoes.map((pub, index) => (
             <div key={index} className="flex-none w-72 mx-2 p-4 rounded-lg bg-white text-black shadow-lg transition duration-300 ease-in-out transform scale-100">
               <h3 className="text-lg font-semibold">{pub.titulo}</h3>
-              <p>{pub.autores}</p> {/* Agora autores é uma string */}
+              <p>{pub.autores.join(', ')}</p> {/* Autores agora como string separada por vírgulas */}
               <p>{pub.categoria}</p>
               <p className="mb-4">{pub.resumo}</p>
               <Link href={`/publicacoes/publicacao/${pub.identifier}/${pub.slug}`}>
@@ -123,7 +123,7 @@ const PublicacoesPage: React.FC = () => {
           {current < publicacoes.length - itemsPerPage && (
             <div className="flex-none w-1/4 mx-2 p-4 rounded-lg bg-white text-black shadow-lg transform scale-90 opacity-50">
               <h3 className="text-lg font-semibold">{publicacoes[current + itemsPerPage].titulo}</h3>
-              <p>{publicacoes[current + itemsPerPage].autores}</p> {/* Agora autores é uma string */}
+              <p>{publicacoes[current + itemsPerPage].autores.join(', ')}</p> {/* Autores agora como string separada por vírgulas */}
             </div>
           )}
         </div>

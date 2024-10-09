@@ -15,16 +15,14 @@ const NewPublicationPage: React.FC = () => {
   const [categoria, setCategoria] = useState('');
   const [autores, setAutores] = useState('');
   const [link, setLink] = useState('');
-  const [revisadoPor, setRevisadoPor] = useState('');
   const [notas, setNotas] = useState('');
-  const [publicacoes, setPublicacoes] = useState(''); // Campo 'publicacoes' adicionado
+  const [successMessage, setSuccessMessage] = useState(false);
 
   const router = useRouter();
-  const [showButtons, setShowButtons] = useState(false);
 
   const api = getAPIClient();
 
-  // Transformar campos de array de strings como 'palavrasChave' e 'autores' em strings separadas por vírgula
+  // Transformar campos de array de strings como 'palavrasChave' e 'autores' em arrays separados por vírgula
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -32,19 +30,21 @@ const NewPublicationPage: React.FC = () => {
       const cookies = parseCookies();
       const csrfToken = cookies['csrf_token'];
 
+      // Convertendo 'palavrasChave' e 'autores' em arrays, separados por vírgula
+      const palavrasChaveArray = palavrasChave.split(',').map((item) => item.trim());
+      const autoresArray = autores.split(',').map((item) => item.trim());
+
       const response = await api.post('/api/publicacoes', {
         titulo: title,
         subtitulo: subtitle || null,
-        palavras_chave: palavrasChave, // Agora é uma string
+        palavras_chave: palavrasChaveArray, // Agora enviamos um array
         banner: banner || null,
         resumo: summary || null,
         categoria: categoria || null,
-        autores: autores, // Agora é uma string
+        autores: autoresArray, // Agora enviamos um array
         link: link || null,
-        revisado_por: revisadoPor || null,
         visibilidade: true,
         notas: notas || null,
-        publicacoes: publicacoes || null,
         visualizacoes: 0,
         data_criacao: new Date().toISOString(),
         data_modificacao: new Date().toISOString(),
@@ -56,11 +56,10 @@ const NewPublicationPage: React.FC = () => {
       });
 
       console.log('Publicação criada com sucesso:', response.data);
-      setShowButtons(true);
+      setSuccessMessage(true); // Exibe a mensagem de sucesso
     } catch (error: any) {
-      // Exibir o erro detalhado no console
       if (error.response) {
-        console.error('Erro ao criar publicação:', error.response.data); // Detalhes da resposta do servidor
+        console.error('Erro ao criar publicação:', error.response.data); 
       } else {
         console.error('Erro desconhecido:', error.message);
       }
@@ -80,137 +79,136 @@ const NewPublicationPage: React.FC = () => {
     setCategoria('');
     setAutores('');
     setLink('');
-    setRevisadoPor('');
     setNotas('');
-    setPublicacoes('');
-    setShowButtons(false);
+    setSuccessMessage(false); // Esconde a mensagem de sucesso para criar outra publicação
+  };
+
+  const handleBackToPublicacoes = () => {
+    router.push("/perfil/publicacoes/minhas-publicacoes");
   };
 
   return (
     <>
       <Layout>
-        <div className="bg-green-500 py-8">
-          <div className="container mx-auto px-4 mb-8">
-            <h2 className="text-2xl text-white mb-4">Criar Nova Publicação</h2>
-            <form onSubmit={handleSubmit} className="bg-white p-6 rounded">
-              <label className="block text-gray-700 mb-4">
-                Título:
+        <div className="bg-gray-100 my-10 py-10 px-4 max-w-screen-lg mx-auto">
+          <h2 className="text-4xl text-indigo-900 font-bold mb-6 text-center">
+            Criar Nova Publicação
+          </h2>
+
+          {!successMessage ? (
+            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-lg">
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Título:</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Subtítulo:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Subtítulo:</label>
                 <input
                   type="text"
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Resumo:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Resumo:</label>
                 <textarea
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full h-24 text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full h-24"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Palavras-Chave:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Palavras-Chave:</label>
                 <textarea
                   value={palavrasChave}
                   onChange={(e) => setPalavrasChave(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full h-16 text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full h-16"
+                  placeholder="Separe por vírgulas"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Banner (URL):
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Banner (URL):</label>
                 <input
                   type="text"
                   value={banner}
                   onChange={(e) => setBanner(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Categoria:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Categoria:</label>
                 <input
                   type="text"
                   value={categoria}
                   onChange={(e) => setCategoria(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Autores:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Autores:</label>
                 <input
                   type="text"
                   value={autores}
                   onChange={(e) => setAutores(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full"
+                  placeholder="Separe por vírgulas"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Link:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Link:</label>
                 <input
                   type="text"
                   value={link}
                   onChange={(e) => setLink(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full"
                 />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Revisado Por:
-                <input
-                  type="text"
-                  value={revisadoPor}
-                  onChange={(e) => setRevisadoPor(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
-                />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Publicações:
-                <input
-                  type="text"
-                  value={publicacoes}
-                  onChange={(e) => setPublicacoes(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full text-gray-700 bg-gray-100"
-                />
-              </label>
-              <label className="block text-gray-700 mb-4">
-                Notas:
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-lg font-semibold">Notas:</label>
                 <textarea
                   value={notas}
                   onChange={(e) => setNotas(e.target.value)}
-                  className="border border-gray-300 rounded py-2 px-3 w-full h-16 text-gray-700 bg-gray-100"
+                  className="border border-gray-300 rounded py-2 px-3 w-full h-16"
                 />
-              </label>
-              <button type="submit" className="bg-green-500 text-white rounded py-2 px-4 mt-4">
+              </div>
+              <button
+                type="submit"
+                className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+              >
                 Criar Publicação
               </button>
+              <button
+                onClick={handleBackToPublicacoes}
+                className="bg-gray-500 text-white px-4 py-2 rounded ml-4 hover:bg-gray-600"
+              >
+                Voltar
+              </button>
             </form>
-
-            {showButtons && (
-              <div className="mt-4">
-                <button
-                  onClick={handleGoHome}
-                  className="bg-blue-500 text-white rounded py-2 px-4 mr-2"
-                >
-                  Voltar para a página inicial
-                </button>
+          ) : (
+            <div className="text-center">
+              <p className="text-lg text-green-600 font-bold mb-6">Publicação criada com sucesso!</p>
+              <div className="flex justify-center space-x-4">
                 <button
                   onClick={handleCreateAnother}
-                  className="bg-white text-green-500 rounded py-2 px-4"
+                  className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
                 >
                   Criar outra publicação
                 </button>
+                <button
+                  onClick={handleBackToPublicacoes}
+                  className="bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600"
+                >
+                  Voltar para Publicações
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Layout>
     </>

@@ -4,8 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAPIClient } from "../../../../../../../services/axios";
 import { parseCookies } from "nookies";
-import Header from "@/app/partials/Header";
-import Footer from "@/app/partials/Footer";
+import Layout from "../../../../../../components/Layout";
 
 interface Publicacao {
   idPublicacao: string;
@@ -14,8 +13,8 @@ interface Publicacao {
   resumo: string;
   categoria: string;
   banner: string;
-  palavrasChave: string; // Agora é string, não array
-  autores: string; // Agora é string, não array
+  palavrasChave: string;
+  autores: string;
   publicacoes: string;
   revisadoPor: string;
   slug: string;
@@ -24,6 +23,8 @@ interface Publicacao {
   dataCriacao: Date;
   dataModificacao: Date;
   visualizacoes: number;
+  notas: string;
+  nomeUsuario:string;
 }
 
 const PublicacaoPage: React.FC = () => {
@@ -43,6 +44,7 @@ const PublicacaoPage: React.FC = () => {
 
         const data = response.data;
 
+        // Configura a publicação com dados do backend
         setPublicacao({
           idPublicacao: data.id_publicacao,
           titulo: data.titulo,
@@ -50,8 +52,8 @@ const PublicacaoPage: React.FC = () => {
           resumo: data.resumo,
           categoria: data.categoria,
           banner: data.banner,
-          palavrasChave: data.palavras_chave || "", // Agora string
-          autores: data.autores || "", // Agora string
+          palavrasChave: data.palavras_chave.join(", "),
+          autores: data.autores.join(", "),
           publicacoes: data.publicacoes,
           revisadoPor: data.revisado_por,
           slug: data.slug,
@@ -60,6 +62,8 @@ const PublicacaoPage: React.FC = () => {
           dataCriacao: new Date(data.data_criacao),
           dataModificacao: new Date(data.data_modificacao),
           visualizacoes: data.visualizacoes,
+          notas: data.notas || "",
+          nomeUsuario: data.nome_de_usuario || "Usuário desconhecido" // Adicionando nome do usuário
         });
 
         setFormData({
@@ -68,10 +72,11 @@ const PublicacaoPage: React.FC = () => {
           resumo: data.resumo,
           categoria: data.categoria,
           banner: data.banner,
-          palavrasChave: data.palavras_chave || "", // Agora string
-          autores: data.autores || "", // Agora string
+          palavrasChave: data.palavras_chave.join(", "),
+          autores: data.autores.join(", "),
           publicacoes: data.publicacoes,
           link: data.link,
+          notas: data.notas || "",
         });
       } catch (error) {
         console.error("Erro ao obter a publicação", error);
@@ -83,26 +88,13 @@ const PublicacaoPage: React.FC = () => {
     }
   }, [identifier, slug]);
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setFormData(publicacao || {});
-  };
-
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "palavrasChave" || name === "autores"
-          ? value // Mantém como string
-          : value,
+      [name]: value,
     }));
   };
 
@@ -111,7 +103,6 @@ const PublicacaoPage: React.FC = () => {
     try {
       const api = getAPIClient();
       const cookies = parseCookies();
-
       const csrfToken = cookies["csrf_token"];
       const token = cookies["token"];
 
@@ -120,25 +111,28 @@ const PublicacaoPage: React.FC = () => {
         return;
       }
 
-      if (!publicacao?.idPublicacao) {
-        throw new Error("ID da publicação inválido.");
-      }
-
-      let updatedSlug = publicacao.slug;
-      if (publicacao.titulo !== formData.titulo) {
-        updatedSlug = formData.titulo
-          ? formData.titulo.toLowerCase().replace(/\s+/g, "-")
-          : publicacao.slug;
-      }
+      const palavrasChaveArray = formData.palavrasChave
+        ? formData.palavrasChave.split(",").map((item) => item.trim())
+        : [];
+      const autoresArray = formData.autores
+        ? formData.autores.split(",").map((item) => item.trim())
+        : [];
 
       const updatedFormData = {
-        ...formData,
-        slug: updatedSlug,
-        dataModificacao: new Date().toISOString(),
+        titulo: formData.titulo,
+        subtitulo: formData.subtitulo,
+        palavras_chave: palavrasChaveArray,
+        banner: formData.banner,
+        resumo: formData.resumo,
+        categoria: formData.categoria,
+        autores: autoresArray,
+        publicacoes: formData.publicacoes,
+        link: formData.link,
+        notas: formData.notas,
       };
 
       await api.put(
-        `/api/publicacoes/${publicacao.idPublicacao}`,
+        `/api/publicacoes/${publicacao?.idPublicacao}`,
         updatedFormData,
         {
           headers: {
@@ -149,14 +143,21 @@ const PublicacaoPage: React.FC = () => {
         }
       );
 
-      alert("Publicação atualizada com sucesso!");
-      setIsEditing(false);
+      alert("Modificações salvas");
+      router.push("/perfil/publicacoes/minhas-publicacoes"); // Redirecionar após salvar
     } catch (error) {
       console.error("Erro ao atualizar a publicação", error);
-      alert(
-        "Falha ao atualizar a publicação. Verifique o console para mais detalhes."
-      );
+      alert("Falha ao atualizar a publicação. Verifique o console.");
     }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setFormData(publicacao || {});
   };
 
   const handleBackToPublicacoes = () => {
@@ -169,177 +170,208 @@ const PublicacaoPage: React.FC = () => {
 
   return (
     <>
-      <Header />
-      <div className="bg-green-500 p-5">
-        <h2>{isEditing ? "Editar Publicação" : publicacao.titulo}</h2>
+      <Layout>
+      <div className="p-8 max-w-screen-lg mx-auto my-20">
+        {publicacao?.banner && (
+          <p className="text-lg mb-4">
+            <strong>Banner (URL):</strong> {publicacao.banner}
+          </p>
+        )}
 
         {isEditing ? (
           <form onSubmit={handleSubmit}>
-            <div>
-              <label>Título:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Título:</label>
               <input
                 type="text"
                 name="titulo"
                 value={formData.titulo || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
               />
             </div>
 
-            <div>
-              <label>Subtítulo:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Subtítulo:</label>
               <input
                 type="text"
                 name="subtitulo"
                 value={formData.subtitulo || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
               />
             </div>
 
-            <div>
-              <label>Resumo:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Resumo:</label>
               <textarea
                 name="resumo"
                 value={formData.resumo || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
               />
             </div>
 
-            <div>
-              <label>Categoria:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Categoria:</label>
               <input
                 type="text"
                 name="categoria"
                 value={formData.categoria || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
               />
             </div>
 
-            <div>
-              <label>Banner (URL):</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Banner (URL):</label>
               <input
                 type="text"
                 name="banner"
                 value={formData.banner || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
               />
             </div>
 
-            <div>
-              <label>Autores:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Autores:</label>
               <input
                 type="text"
                 name="autores"
                 value={formData.autores || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
+                placeholder="Separe por vírgulas"
               />
             </div>
 
-            <div>
-              <label>Palavras-Chave:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Palavras-Chave:</label>
               <input
                 type="text"
                 name="palavrasChave"
                 value={formData.palavrasChave || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
+                placeholder="Separe por vírgulas"
               />
             </div>
 
-            <div>
-              <label>Link:</label>
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Link:</label>
               <input
                 type="text"
                 name="link"
                 value={formData.link || ""}
                 onChange={handleInputChange}
-                className="border p-2 w-full"
+                className="border border-gray-300 p-3 w-full rounded-lg"
               />
             </div>
 
-            <div className="flex justify-between mt-4">
+            <div className="mb-4">
+              <label className="block text-lg font-semibold mb-2">Notas:</label>
+              <textarea
+                name="notas"
+                value={formData.notas || ""}
+                onChange={handleInputChange}
+                className="border border-gray-300 p-3 w-full rounded-lg"
+              />
+            </div>
+
+            <div className="flex justify-between mt-6">
               <button
                 type="submit"
-                className="bg-blue-500 text-white px-4 py-2 rounded"
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg"
               >
                 Salvar Alterações
               </button>
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="bg-gray-500 text-white px-4 py-2 rounded"
+                className="bg-gray-500 text-white px-6 py-3 rounded-lg"
               >
-                Cancelar Edição
+                Cancelar
               </button>
             </div>
           </form>
         ) : (
           <div>
-            <p>
-              <strong>Resumo:</strong> {publicacao.resumo}
+            <h2 className="text-4xl font-bold mb-6 text-center text-indigo-900">
+              {publicacao.titulo}
+            </h2>
+
+            <p className="text-xl text-center text-gray-600 mb-4">
+              {publicacao.subtitulo}
             </p>
-            <p>
-              <strong>Subtítulo:</strong> {publicacao.subtitulo}
-            </p>
-            <p>
-              <strong>Categoria:</strong> {publicacao.categoria}
-            </p>
-            <p>
-              <strong>Banner:</strong> {publicacao.banner}
-            </p>
-            <p>
-              <strong>Palavras-Chave:</strong>{" "}
-              {publicacao.palavrasChave || "Não disponível"}
-            </p>
-            <p>
-              <strong>Autores:</strong> {publicacao.autores || "Não disponível"}
-            </p>
-            <p>
-              <strong>Link:</strong> {publicacao.link || "Não disponível"}
-            </p>
-            <p>
-              <strong>Data de Criação:</strong>{" "}
-              {new Date(publicacao.dataCriacao).toLocaleString()}
-            </p>
-            <p>
-              <strong>Última Modificação:</strong>{" "}
-              {new Date(publicacao.dataModificacao).toLocaleString()}
-            </p>
-            <p>
-              <strong>Visualizações:</strong> {publicacao.visualizacoes}
-            </p>
-            <p>
+
+            <p className="text-sm text-gray-500 mb-2">
+              <strong>Usuário:</strong> {publicacao.nomeUsuario || "Não disponível"}{" "}
+              | <strong>Visibilidade:</strong>{" "}
+              {publicacao.visibilidade ? "Público" : "Privado"} |{" "}
               <strong>Revisado Por:</strong>{" "}
               {publicacao.revisadoPor || "Não disponível"}
             </p>
-            <p>
-              <strong>Visibilidade:</strong>{" "}
-              {publicacao.visibilidade ? "Público" : "Privado"}
+
+            <p className="text-sm text-gray-500 mb-4">
+              <strong>Criado em:</strong>{" "}
+              {new Date(publicacao.dataCriacao).toLocaleString()} |{" "}
+              <strong>Última Modificação:</strong>{" "}
+              {new Date(publicacao.dataModificacao).toLocaleString()} |{" "}
+              <strong>Visualizações:</strong> {publicacao.visualizacoes}
             </p>
 
-            <button
-              onClick={handleEdit}
-              className="bg-indigo-500 text-white px-4 py-2 rounded"
-            >
-              Editar Publicação
-            </button>
-            <button
-              onClick={handleBackToPublicacoes}
-              className="bg-gray-500 text-white px-4 py-2 rounded ml-4"
-            >
-              Voltar para Minhas Publicações
-            </button>
+            <p className="text-lg mb-2">
+              <strong>Autores:</strong> {publicacao.autores || "Não disponível"}
+            </p>
+
+            <p className="text-lg mb-4">
+              <strong>Palavras-Chave:</strong>{" "}
+              {publicacao.palavrasChave || "Não disponível"}
+            </p>
+
+            <p className="text-md mb-6">
+              <strong>Resumo:</strong> {publicacao.resumo}
+            </p>
+
+            {publicacao.link && (
+              <p className="text-md mb-6">
+                <strong>Link:</strong>{" "}
+                <a
+                  href={publicacao.link}
+                  className="text-blue-500 hover:underline"
+                >
+                  {publicacao.link}
+                </a>
+              </p>
+            )}
+
+            {publicacao.notas && (
+              <p className="text-md mb-6">
+                <strong>Notas:</strong> {publicacao.notas || "Não disponível"}
+              </p>
+            )}
+
+            <div className="flex mt-4">
+              <button
+                onClick={handleEdit}
+                className="bg-indigo-500 text-white px-6 py-3 rounded-lg"
+              >
+                Editar Publicação
+              </button>
+              <button
+                onClick={handleBackToPublicacoes}
+                className="bg-gray-500 text-white px-6 py-3 rounded-lg ml-4"
+              >
+                Voltar
+              </button>
+            </div>
           </div>
         )}
       </div>
-      <Footer />
+      </Layout>
     </>
-  );
+  )
 };
 
 export default PublicacaoPage;
