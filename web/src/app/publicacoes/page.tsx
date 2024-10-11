@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaKey, FaBookmark } from "react-icons/fa";
+import { FaUser, FaKey, FaBookmark, FaBorderAll } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../components/Layout";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -130,6 +130,12 @@ const PublicacoesPage: React.FC = () => {
             <FaKey className="text-gray-600 mr-2" />
             <p className="text-sm text-gray-600">{pub.palavrasChave.join(", ")}</p>
           </div>
+          <div className="flex items-center mt-1">
+            <FaBorderAll className="text-gray-600 mr-2" />
+            <p className="text-sm text-gray-600">{pub.categoria}</p>{" "}
+            {/* Agora com vírgula */}
+          </div>
+          
 
           <div className="mt-1 text-sm text-gray-600">
             <strong>Resumo: </strong> {pub.resumo}
@@ -152,6 +158,7 @@ const PublicacoesPage: React.FC = () => {
           </Link>
         </div>
 
+        {/* Verificação se o usuário está logado antes de exibir o botão de favoritar */}
         {user && (
           <button className="text-gray-600 hover:text-blue-500">
             <FaBookmark size={20} />

@@ -1,4 +1,6 @@
 {
-  "/page": "app/page.js",
-  "/publicacoes/publicacao/[identifier]/[slug]/page": "app/publicacoes/publicacao/[identifier]/[slug]/page.js"
+  "/publicacoes/page": "app/publicacoes/page.js",
+  "/publicacoes/publicacao/[identifier]/[slug]/page": "app/publicacoes/publicacao/[identifier]/[slug]/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/perfil/publicacoes/minhas-publicacoes/page": "app/perfil/publicacoes/minhas-publicacoes/page.js"
 }

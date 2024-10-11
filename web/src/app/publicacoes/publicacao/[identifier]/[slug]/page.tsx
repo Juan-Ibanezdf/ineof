@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { FaBookmark } from "react-icons/fa";
 import { useParams } from "next/navigation";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../../../../components/Layout";
+import { AuthContext } from "@/contexts/AuthContext";
+
 
 interface Publicacao {
   idPublicacao: string;
@@ -28,6 +30,7 @@ interface Publicacao {
 }
 
 const PublicacaoPage: React.FC = () => {
+  const { user } = useContext(AuthContext); // Verifica se o usuário está logado
   const [publicacao, setPublicacao] = useState<Publicacao | null>(null);
   const { identifier, slug } = useParams();
 
@@ -132,6 +135,12 @@ const PublicacaoPage: React.FC = () => {
             {publicacao.palavrasChave || "Não disponível"}
           </p>
 
+
+          <p className="text-lg mb-4">
+            <strong>Categoria:</strong>{" "}
+            {publicacao.categoria || "Não disponível"}
+          </p>
+          
           <p className="text-md mb-6">
             <strong>Resumo:</strong> {publicacao.resumo}
           </p>
@@ -158,13 +167,17 @@ const PublicacaoPage: React.FC = () => {
             >
               Voltar
             </button>
-            <button
-              onClick={handleSaveFavorite}
-              className="bg-green-500 text-white px-6 py-3 rounded-lg ml-4 flex items-center"
-            >
-              <FaBookmark className="mr-2" />
-              Salvar como favorito
-            </button>
+
+            {/* Verifica se o usuário está logado antes de exibir o botão de favoritar */}
+            {user && (
+              <button
+                onClick={handleSaveFavorite}
+                className="bg-green-500 text-white px-6 py-3 rounded-lg ml-4 flex items-center"
+              >
+                <FaBookmark className="mr-2" />
+                Salvar como favorito
+              </button>
+            )}
           </div>
         </div>
       </Layout>

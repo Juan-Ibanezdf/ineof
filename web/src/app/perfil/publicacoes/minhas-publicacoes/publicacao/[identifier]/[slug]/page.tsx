@@ -329,7 +329,13 @@ const PublicacaoPage: React.FC = () => {
               <strong>Palavras-Chave:</strong>{" "}
               {publicacao.palavrasChave || "Não disponível"}
             </p>
+            
+            <p className="text-lg mb-4">
+              <strong>Categoria:</strong>{" "}
+              {publicacao.categoria || "Não disponível"}
+            </p>
 
+            
             <p className="text-md mb-6">
               <strong>Resumo:</strong> {publicacao.resumo}
             </p>

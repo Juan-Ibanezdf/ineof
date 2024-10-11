@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaKey, FaTrashAlt, FaEdit } from "react-icons/fa";
+import { FaUser, FaKey, FaTrashAlt, FaEdit,FaBorderAll } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../../../components/Layout";
 import { AuthContext } from "@/contexts/AuthContext";
@@ -167,10 +167,19 @@ const PublicacoesPage: React.FC = () => {
             {/* Agora com vírgula */}
           </div>
 
+          <div className="flex items-center mt-1">
+            <FaBorderAll className="text-gray-600 mr-2" />
+            <p className="text-sm text-gray-600">{pub.categoria}</p>{" "}
+            {/* Agora com vírgula */}
+          </div>
+          
+
           <div className="mt-1 text-sm text-gray-600">
             <strong>Resumo: </strong> {pub.resumo}{" "}
             {/* Limita o resumo a 70 caracteres */}
           </div>
+
+
 
           <div className="flex items-center mt-1 text-sm text-gray-600">
             <span>

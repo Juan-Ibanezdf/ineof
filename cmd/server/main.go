@@ -71,8 +71,8 @@ func main() {
 			// Rota para buscar publicações com filtros e paginação
 			r.Get("/filtro", handlers.GetPublicacoesComFiltro(conn))
 
-			// Rota para buscar publicações com filtros e paginação
-			r.Get("/", handlers.GetPublicacoesSemFiltro(conn))
+			// // Rota para buscar publicações com filtros e paginação
+			// r.Get("/", handlers.GetPublicacoesSemFiltro(conn))
 
 			// Rota para buscar uma publicação específica do usuário usando identifier e slug
 			r.Get("/usuario/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlugDoUsuario(conn))

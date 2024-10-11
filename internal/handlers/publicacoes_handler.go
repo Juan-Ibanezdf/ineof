@@ -6,11 +6,11 @@ import (
 	"api/internal/utils"
 	"context"
 	"encoding/json"
+
 	"io"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt"
@@ -28,7 +28,7 @@ func PublicacoesRouter(db *pgxpool.Pool) *chi.Mux {
 	r.Delete("/{id}", DeletePublicacao(db))
 	r.Get("/usuario", GetPublicacoesByUsuario(db))
 	r.Get("/usuario/{identifier}/{slug}", GetPublicacaoByIdentifierESlugDoUsuario(db))
-	r.Get("/", GetPublicacoesSemFiltro(db))
+	// r.Get("/", GetPublicacoesSemFiltro(db))
 
 	return r
 }
@@ -279,10 +279,10 @@ func UpdatePublicacao(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// GetPublicacoesComFiltro busca publicações com filtros opcionais
+// GetPublicacoesComFiltro busca publicações gerais com filtros e paginação
 func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Obtendo os parâmetros de busca
+		// Obtenção dos parâmetros de busca e paginação
 		searchTerm := r.URL.Query().Get("searchTerm")
 		categoria := r.URL.Query().Get("categoria")
 		palavrasChave := r.URL.Query().Get("palavras_chave")
@@ -310,6 +310,8 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
             FROM Publicacoes
             WHERE 1=1`
 
+		paramsCount := []interface{}{} // Parâmetros para contagem
+
 		// Consulta base para as publicações com paginação
 		query := `
             SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
@@ -318,20 +320,15 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
             FROM Publicacoes
             WHERE 1=1`
 
-		params := []interface{}{}
+		params := []interface{}{} // Parâmetros para busca
 		paramIndex := 1
 
 		// Filtros opcionais
 		if searchTerm != "" {
-			query += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			query += ` OR autores ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			query += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			query += ` OR palavras_chave ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
-			queryCount += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` OR autores ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` OR palavras_chave ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
+			query += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%' OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
+			queryCount += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%' OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
 			params = append(params, searchTerm)
+			paramsCount = append(paramsCount, searchTerm)
 			paramIndex++
 		}
 
@@ -339,22 +336,21 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 			query += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
 			queryCount += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
 			params = append(params, categoria)
+			paramsCount = append(paramsCount, categoria)
 			paramIndex++
 		}
 
-		// Filtro por palavras_chave (array)
+		// Filtro por palavras-chave (usando unnest)
 		if palavrasChave != "" {
-			query += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && palavras_chave`
-			queryCount += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && palavras_chave`
-			params = append(params, pq.Array(strings.Split(palavrasChave, ","))) // Converte a string de palavras-chave em array
+			query += ` AND EXISTS (SELECT 1 FROM unnest(palavras_chave) AS pk WHERE pk ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
+			params = append(params, palavrasChave)
 			paramIndex++
 		}
 
-		// Filtro por autores (array)
+		// Filtro por autores (usando unnest)
 		if autores != "" {
-			query += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && autores`
-			queryCount += ` AND $` + strconv.Itoa(paramIndex) + `::text[] && autores`
-			params = append(params, pq.Array(strings.Split(autores, ","))) // Converte a string de autores em array
+			query += ` AND EXISTS (SELECT 1 FROM unnest(autores) AS autor WHERE autor ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
+			params = append(params, autores)
 			paramIndex++
 		}
 
@@ -363,6 +359,7 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 			query += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
 			queryCount += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
 			params = append(params, anoInicio, anoFim)
+			paramsCount = append(paramsCount, anoInicio, anoFim)
 			paramIndex += 2
 		}
 
@@ -372,18 +369,18 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 
 		// Executar a consulta para contar o total de publicações
 		var totalPublicacoes int
-		err := db.QueryRow(context.Background(), queryCount, params[:paramIndex-1]...).Scan(&totalPublicacoes)
+		err := db.QueryRow(context.Background(), queryCount, paramsCount...).Scan(&totalPublicacoes)
 		if err != nil {
-			http.Error(w, "Failed to count publicacoes", http.StatusInternalServerError)
-			log.Printf("Erro ao contar publicacoes: %v", err)
+			http.Error(w, "Erro ao contar publicações", http.StatusInternalServerError)
+			log.Println("Erro ao contar publicações:", err)
 			return
 		}
 
 		// Executar a consulta para buscar as publicações com filtros e paginação
 		rows, err := db.Query(context.Background(), query, params...)
 		if err != nil {
-			http.Error(w, "Failed to query publicacoes", http.StatusInternalServerError)
-			log.Printf("Erro ao buscar publicacoes: %v", err)
+			http.Error(w, "Erro ao buscar publicações", http.StatusInternalServerError)
+			log.Println("Erro ao buscar publicações:", err)
 			return
 		}
 		defer rows.Close()
@@ -399,8 +396,8 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 				&publicacao.Visualizacoes, &publicacao.RevisadoPor, &publicacao.Slug, &publicacao.Identifier,
 				&publicacao.Visibilidade, &publicacao.Notas, &publicacao.IDUsuario)
 			if err != nil {
-				http.Error(w, "Failed to scan publicacao", http.StatusInternalServerError)
-				log.Printf("Erro ao escanear publicacao: %v", err)
+				http.Error(w, "Erro ao escanear publicações", http.StatusInternalServerError)
+				log.Println("Erro ao escanear publicação:", err)
 				return
 			}
 			publicacoes = append(publicacoes, publicacao)
@@ -413,61 +410,8 @@ func GetPublicacoesComFiltro(db *pgxpool.Pool) http.HandlerFunc {
 			"publicacoes": publicacoes,
 		})
 		if err != nil {
-			http.Error(w, "Failed to encode publicacoes", http.StatusInternalServerError)
-			log.Printf("Erro ao codificar JSON de publicacoes: %v", err)
-		}
-	}
-}
-
-// GetPublicacoesSemFiltro busca todas as publicações sem filtro
-func GetPublicacoesSemFiltro(db *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Consulta base para pegar todas as publicações
-		query := `
-			SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
-			publicacoes, data_criacao, data_modificacao, link, visualizacoes, revisado_por, slug, 
-			identifier, visibilidade, notas, id_usuario 
-			FROM Publicacoes`
-
-		// Log para depuração
-		log.Printf("Executando consulta: %s", query)
-
-		// Executar a consulta para buscar todas as publicações
-		rows, err := db.Query(context.Background(), query)
-		if err != nil {
-			http.Error(w, "Failed to query publicacoes", http.StatusInternalServerError)
-			log.Printf("Erro ao buscar publicacoes: %v", err)
-			return
-		}
-		defer rows.Close()
-
-		// Preencher a lista de publicações com os resultados da query
-		var publicacoes []models.Publicacao
-		for rows.Next() {
-			var publicacao models.Publicacao
-			err := rows.Scan(
-				&publicacao.ID, &publicacao.Titulo, &publicacao.Subtitulo, pq.Array(&publicacao.PalavrasChave), // Correto para array
-				&publicacao.Banner, &publicacao.Resumo, &publicacao.NomeDeUsuario, &publicacao.Categoria,
-				pq.Array(&publicacao.Autores), // Correto para array
-				&publicacao.Publicacoes, &publicacao.DataCriacao, &publicacao.DataModificacao, &publicacao.Link,
-				&publicacao.Visualizacoes, &publicacao.RevisadoPor, &publicacao.Slug, &publicacao.Identifier,
-				&publicacao.Visibilidade, &publicacao.Notas, &publicacao.IDUsuario)
-			if err != nil {
-				http.Error(w, "Failed to scan publicacao", http.StatusInternalServerError)
-				log.Printf("Erro ao escanear publicacao: %v", err)
-				return
-			}
-			publicacoes = append(publicacoes, publicacao)
-		}
-
-		// Retorna as publicações em formato JSON
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(map[string]interface{}{
-			"publicacoes": publicacoes,
-		})
-		if err != nil {
-			http.Error(w, "Failed to encode publicacoes", http.StatusInternalServerError)
-			log.Printf("Erro ao codificar JSON de publicacoes: %v", err)
+			http.Error(w, "Erro ao codificar resposta JSON", http.StatusInternalServerError)
+			log.Println("Erro ao codificar resposta JSON:", err)
 		}
 	}
 }
@@ -598,6 +542,8 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
             FROM Publicacoes
             WHERE nome_de_usuario = $1`
 
+		paramsCount := []interface{}{nomeDeUsuario} // Parâmetro para contagem
+
 		// Consulta base para as publicações com paginação
 		query := `
             SELECT id_publicacao, titulo, subtitulo, palavras_chave, banner, resumo, nome_de_usuario, categoria, autores, 
@@ -606,16 +552,15 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
             FROM Publicacoes
             WHERE nome_de_usuario = $1`
 
-		params := []interface{}{nomeDeUsuario} // Primeiro parâmetro: nome de usuário do token
+		params := []interface{}{nomeDeUsuario} // Parâmetro para busca
 		paramIndex := 2
 
 		// Filtros opcionais
 		if searchTerm != "" {
-			query += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			query += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
+			query += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%' OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
+			queryCount += ` AND (titulo ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%' OR categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
 			params = append(params, searchTerm)
+			paramsCount = append(paramsCount, searchTerm)
 			paramIndex++
 		}
 
@@ -623,19 +568,20 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 			query += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
 			queryCount += ` AND categoria ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
 			params = append(params, categoria)
+			paramsCount = append(paramsCount, categoria)
 			paramIndex++
 		}
 
+		// Filtro por palavras-chave (usando unnest)
 		if palavrasChave != "" {
-			query += ` AND palavras_chave ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` AND palavras_chave ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			query += ` AND EXISTS (SELECT 1 FROM unnest(palavras_chave) AS pk WHERE pk ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
 			params = append(params, palavrasChave)
 			paramIndex++
 		}
 
+		// Filtro por autores (usando unnest)
 		if autores != "" {
-			query += ` AND autores ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
-			queryCount += ` AND autores ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%'`
+			query += ` AND EXISTS (SELECT 1 FROM unnest(autores) AS autor WHERE autor ILIKE '%' || $` + strconv.Itoa(paramIndex) + ` || '%')`
 			params = append(params, autores)
 			paramIndex++
 		}
@@ -645,6 +591,7 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 			query += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
 			queryCount += ` AND EXTRACT(YEAR FROM data_criacao) BETWEEN $` + strconv.Itoa(paramIndex) + ` AND $` + strconv.Itoa(paramIndex+1)
 			params = append(params, anoInicio, anoFim)
+			paramsCount = append(paramsCount, anoInicio, anoFim)
 			paramIndex += 2
 		}
 
@@ -654,7 +601,7 @@ func GetPublicacoesByUsuario(db *pgxpool.Pool) http.HandlerFunc {
 
 		// Executar a consulta para contar o total de publicações
 		var totalPublicacoes int
-		err = db.QueryRow(context.Background(), queryCount, params[:paramIndex-1]...).Scan(&totalPublicacoes)
+		err = db.QueryRow(context.Background(), queryCount, paramsCount...).Scan(&totalPublicacoes)
 		if err != nil {
 			http.Error(w, "Erro ao contar publicações", http.StatusInternalServerError)
 			log.Println("Erro ao contar publicações:", err)
