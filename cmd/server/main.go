@@ -42,8 +42,8 @@ func main() {
 	r.Post("/api/auth/refresh", handlers.RefreshToken(conn))
 	r.Get("/api/publicacoes", handlers.GetPublicacoesComFiltro(conn))
 	r.Get("/api/publicacoes/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlug(conn))
-	r.Get("/api/noticias", handlers.GetAllNoticiasComFiltro(conn))
-	r.Get("/api/noticias/{id}", handlers.GetNoticiaByID(conn))
+	r.Get("/api/noticias", handlers.GetNoticiasComFiltro(conn))
+	r.Get("/api/noticias/{id}", handlers.GetNoticiaByIdentifierESlug(conn))
 	r.Get("/usuarios/cargo/{cargo_id}", handlers.GetUsuariosByCargo(conn))
 	// Adiciona a rota de validação de token
 	r.Get("/api/auth/validate-token", handlers.ValidateToken)
@@ -69,10 +69,7 @@ func main() {
 			r.Get("/usuario", handlers.GetPublicacoesByUsuario(conn))
 
 			// Rota para buscar publicações com filtros e paginação
-			r.Get("/filtro", handlers.GetPublicacoesComFiltro(conn))
-
-			// // Rota para buscar publicações com filtros e paginação
-			// r.Get("/", handlers.GetPublicacoesSemFiltro(conn))
+			r.Get("/", handlers.GetPublicacoesComFiltro(conn))
 
 			// Rota para buscar uma publicação específica do usuário usando identifier e slug
 			r.Get("/usuario/{identifier}/{slug}", handlers.GetPublicacaoByIdentifierESlugDoUsuario(conn))
@@ -85,11 +82,22 @@ func main() {
 			})
 		})
 
-		// Rotas de favoritos
+		// Definindo as rotas de favoritos
 		r.Route("/favoritos", func(r chi.Router) {
-			r.Use(middleware.AuthorizationMiddleware("leitor"))
-			r.Use(middleware.ValidateCSRFToken) // Adicionar validação de CSRF em todas as requisições dentro de favoritos (se necessário)
-			r.Mount("/", handlers.FavoritosRouter(conn))
+			// Rotas de leitura não precisam de validação CSRF
+			r.With(middleware.AuthorizationMiddleware("leitor")).Group(func(r chi.Router) {
+				// Rota para buscar todos os favoritos do usuário autenticado com pesquisa e paginação
+				r.Get("/", handlers.GetAllFavoritos(conn))
+
+				// Rota para buscar um favorito específico usando identifier e slug
+				r.Get("/{identifier}/{slug}", handlers.GetFavoritoByIdentifierESlug(conn))
+			})
+
+			// Apenas rotas que alteram o estado precisam de validação CSRF
+			r.With(middleware.AuthorizationMiddleware("leitor")).With(middleware.ValidateCSRFToken).Group(func(r chi.Router) {
+				r.Post("/", handlers.CreateFavorito(conn))                 // Cria um novo favorito
+				r.Delete("/{id_favoritos}", handlers.DeleteFavorito(conn)) // Deleta um favorito por identifier e slug
+			})
 		})
 
 		// Rotas de notificações (divididas por nível de acesso)
@@ -102,6 +110,30 @@ func main() {
 			r.With(middleware.AuthorizationMiddleware("leitor")).With(middleware.ValidateCSRFToken).Delete("/{id}", handlers.DeleteNotification(conn))
 			r.With(middleware.AuthorizationMiddleware("gestor_conteudo")).With(middleware.ValidateCSRFToken).Post("/", handlers.CreateNotification(conn))
 			r.With(middleware.AuthorizationMiddleware("gestor_conteudo")).With(middleware.ValidateCSRFToken).Put("/{id}", handlers.UpdateNotification(conn))
+		})
+
+		// NoticiasRouter configura as rotas para os handlers de notícias
+
+		// Definindo as rotas de leitura (não precisam de validação CSRF)
+		r.Route("/noticias", func(r chi.Router) {
+			// Nova rota para buscar notícias do usuário autenticado
+			r.Get("/usuario/filtro", handlers.GetNoticiasByUsuario(conn))
+
+			// Rota para buscar notícias com filtros e paginação
+			r.Get("/", handlers.GetNoticiasComFiltro(conn))
+
+			// Rota para buscar uma notícia específica pelo identifier e slug (aberto ao público)
+			r.Get("/{identifier}/{slug}", handlers.GetNoticiaByIdentifierESlug(conn))
+
+			// Rota para buscar uma notícia específica do usuário usando identifier e slug
+			r.Get("/usuario/{identifier}/{slug}", handlers.GetNoticiaByIdentifierESlugDoUsuario(conn))
+
+			// Apenas rotas que alteram o estado precisam de validação CSRF
+			r.With(middleware.AuthorizationMiddleware("gestor_conteudo")).With(middleware.ValidateCSRFToken).Group(func(r chi.Router) {
+				r.Post("/", handlers.CreateNoticia(conn))       // Cria uma nova notícia
+				r.Put("/{id}", handlers.UpdateNoticia(conn))    // Atualiza uma notícia existente
+				r.Delete("/{id}", handlers.DeleteNoticia(conn)) // Deleta uma notícia por ID
+			})
 		})
 
 		// Rotas de campanhas
@@ -222,14 +254,6 @@ func main() {
 			r.With(middleware.AuthorizationMiddleware("administrador_equipamentos")).With(middleware.ValidateCSRFToken).Post("/", handlers.CreateEquipmentDocument(conn))
 			r.With(middleware.AuthorizationMiddleware("administrador_equipamentos")).With(middleware.ValidateCSRFToken).Put("/{id}", handlers.UpdateEquipmentDocument(conn))
 			r.With(middleware.AuthorizationMiddleware("administrador_equipamentos")).With(middleware.ValidateCSRFToken).Delete("/{id}", handlers.DeleteEquipmentDocument(conn))
-		})
-
-		// Rotas protegidas para notícias
-		r.Route("/noticias", func(r chi.Router) {
-			// Rotas de escrita para nível Admin e superiores
-			r.With(middleware.AuthorizationMiddleware("gestor_conteudo")).With(middleware.ValidateCSRFToken).Post("/", handlers.CreateNoticia(conn))
-			r.With(middleware.AuthorizationMiddleware("gestor_conteudo")).With(middleware.ValidateCSRFToken).Put("/{id}", handlers.UpdateNoticia(conn))
-			r.With(middleware.AuthorizationMiddleware("gestor_conteudo")).With(middleware.ValidateCSRFToken).Delete("/{id}", handlers.DeleteNoticia(conn))
 		})
 
 		// Rotas protegidas para dados da Estação Solarimétrica

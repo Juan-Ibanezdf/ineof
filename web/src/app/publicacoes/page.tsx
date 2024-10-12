@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaKey, FaBookmark, FaBorderAll } from "react-icons/fa";
+import { FaUser, FaKey, FaBorderAll } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../components/Layout";
 import { AuthContext } from "../../contexts/AuthContext";
+import FavoriteButton from "../components/FavoriteButton"; // Importa o componente
 
 interface Publicacao {
   idPublicacao: string;
@@ -24,7 +25,7 @@ interface Publicacao {
 const PublicacoesPage: React.FC = () => {
   const { user, loading } = useContext(AuthContext);
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
-  const [totalPublicacoes, setTotalPublicacoes] = useState(0); 
+  const [totalPublicacoes, setTotalPublicacoes] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("Todos");
   const [filtroAnoInicio, setFiltroAnoInicio] = useState("");
@@ -32,6 +33,7 @@ const PublicacoesPage: React.FC = () => {
   const [filtroPalavrasChave, setFiltroPalavrasChave] = useState("Todos");
   const [paginaAtual, setPaginaAtual] = useState(1);
   const itensPorPagina = 8;
+
 
   // Função para gerar os anos disponíveis no filtro de período
   const getAnos = () => {
@@ -50,7 +52,7 @@ const PublicacoesPage: React.FC = () => {
   const fetchPublicacoes = useCallback(async () => {
     try {
       const api = getAPIClient();
-      const response = await api.get("/api/publicacoes/filtro", {
+      const response = await api.get("/api/publicacoes/", {
         params: {
           pagina: paginaAtual,
           itens_por_pagina: itensPorPagina,
@@ -62,19 +64,21 @@ const PublicacoesPage: React.FC = () => {
         },
       });
 
-      const publicacoesMapeadas = response.data.publicacoes.map((publicacao: any) => ({
-        idPublicacao: publicacao.id_publicacao,
-        titulo: publicacao.titulo,
-        autores: publicacao.autores,
-        palavrasChave: publicacao.palavras_chave,
-        categoria: publicacao.categoria,
-        identifier: publicacao.identifier,
-        slug: publicacao.slug,
-        dataCriacao: new Date(publicacao.data_criacao),
-        dataModificacao: new Date(publicacao.data_modificacao),
-        visualizacoes: publicacao.visualizacoes,
-        resumo: publicacao.resumo,
-      }));
+      const publicacoesMapeadas = response.data.publicacoes.map(
+        (publicacao: any) => ({
+          idPublicacao: publicacao.id_publicacao,
+          titulo: publicacao.titulo,
+          autores: publicacao.autores,
+          palavrasChave: publicacao.palavras_chave,
+          categoria: publicacao.categoria,
+          identifier: publicacao.identifier,
+          slug: publicacao.slug,
+          dataCriacao: new Date(publicacao.data_criacao),
+          dataModificacao: new Date(publicacao.data_modificacao),
+          visualizacoes: publicacao.visualizacoes,
+          resumo: publicacao.resumo,
+        })
+      );
 
       setPublicacoes(publicacoesMapeadas);
       setTotalPublicacoes(response.data.total);
@@ -110,17 +114,13 @@ const PublicacoesPage: React.FC = () => {
     }
 
     if (totalPublicacoes === 0) {
-      // Aqui garantimos que a mensagem será exibida quando não houver publicações
       return <div>Sem publicações encontradas</div>;
     }
 
     return publicacoes.map((pub) => (
       <div key={pub.idPublicacao} className="py-4 border-b flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">
-            {pub.titulo}
-          </h3>
-
+          <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">{pub.titulo}</h3>
           <div className="flex items-center mt-2">
             <FaUser className="text-gray-600 mr-2" />
             <p className="text-sm text-gray-600">{pub.autores.join("; ")}</p>
@@ -132,10 +132,8 @@ const PublicacoesPage: React.FC = () => {
           </div>
           <div className="flex items-center mt-1">
             <FaBorderAll className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.categoria}</p>{" "}
-            {/* Agora com vírgula */}
+            <p className="text-sm text-gray-600">{pub.categoria}</p>
           </div>
-          
 
           <div className="mt-1 text-sm text-gray-600">
             <strong>Resumo: </strong> {pub.resumo}
@@ -158,56 +156,18 @@ const PublicacoesPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Verificação se o usuário está logado antes de exibir o botão de favoritar */}
-        {user && (
-          <button className="text-gray-600 hover:text-blue-500">
-            <FaBookmark size={20} />
-          </button>
-        )}
+        {/* Componente de Favoritos */}
+        {user && <FavoriteButton idPublicacao={pub.idPublicacao} userId={user.idUsuario} />}
       </div>
     ));
-  };
-
-  const renderPaginacao = () => {
-    if (totalPaginas <= 1) {
-      return null;
-    }
-
-    const paginas = [];
-    for (let i = 1; i <= totalPaginas; i++) {
-      paginas.push(
-        <button
-          key={i}
-          onClick={() => setPaginaAtual(i)}
-          className={`px-3 py-1 mx-1 rounded ${i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    return (
-      <div className="flex justify-start mt-4">
-        {paginaAtual > 1 && (
-          <button onClick={() => setPaginaAtual(paginaAtual - 1)} className="px-3 py-1 mx-1 rounded bg-gray-200">
-            &lt;
-          </button>
-        )}
-        {paginas}
-        {paginaAtual < totalPaginas && (
-          <button onClick={() => setPaginaAtual(paginaAtual + 1)} className="px-3 py-1 mx-1 rounded bg-gray-200">
-            &gt;
-          </button>
-        )}
-      </div>
-    );
   };
 
   return (
     <Layout>
       <div className="p-8 bg-gray-100 px-52">
-        <h2 className="text-3xl font-bold mb-6">Publicações</h2>
+        <h2 className="text-3xl font-bold mb-6">Últimas Publicações</h2>
 
+       
         {/* Filtros */}
         <div className="flex items-center mb-6">
           <input
@@ -279,11 +239,26 @@ const PublicacoesPage: React.FC = () => {
           </button>
         </div>
 
+
         {/* Lista de publicações */}
-        <div className="bg-white rounded shadow p-6 w-full lg:w-3/5">{renderPublicacoes()}</div>
+        <div className="bg-white rounded shadow p-6 w-full lg:w-3/5">
+          {renderPublicacoes()}
+        </div>
 
         {/* Paginação */}
-        {renderPaginacao()}
+        {totalPaginas > 1 && (
+          <div className="flex justify-start mt-4">
+            {Array.from({ length: totalPaginas }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setPaginaAtual(i + 1)}
+                className={`px-3 py-1 mx-1 rounded ${i + 1 === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   );

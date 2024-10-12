@@ -22,13 +22,13 @@ import (
 func PublicacoesRouter(db *pgxpool.Pool) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/", CreatePublicacao(db))
-	r.Get("/{identifier}/{slug}", GetPublicacaoByIdentifierESlug(db)) // Atualizado
-	r.Get("/filtro", GetPublicacoesComFiltro(db))                     // Nova rota para busca com filtro
+	r.Get("/", GetPublicacoesComFiltro(db))
+	r.Get("/{identifier}/{slug}", GetPublicacaoByIdentifierESlug(db))
 	r.Put("/{id}", UpdatePublicacao(db))
 	r.Delete("/{id}", DeletePublicacao(db))
+
 	r.Get("/usuario", GetPublicacoesByUsuario(db))
 	r.Get("/usuario/{identifier}/{slug}", GetPublicacaoByIdentifierESlugDoUsuario(db))
-	// r.Get("/", GetPublicacoesSemFiltro(db))
 
 	return r
 }

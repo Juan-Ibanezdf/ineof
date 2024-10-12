@@ -4,11 +4,12 @@ import Layout from "../../../components/Layout";
 import { getAPIClient } from "@/services/axios";
 import Image from "next/image";
 import defaultAvatar from "../../../../../public/user.svg";
-import React, { useEffect, useState } from "react";
+import React, { useState, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { parseCookies } from "nookies";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
 
 // Definição dos tipos
 interface User {
@@ -38,40 +39,30 @@ interface User {
   matricula?: number;
 }
 
+// Função para buscar os dados
+const fetcher = (url: string) => getAPIClient().get(url).then((res) => res.data);
+
 const ProfilePage: React.FC = () => {
   const { register, handleSubmit, setValue } = useForm<User>();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const router = useRouter();
 
-  // Carrega os dados do perfil
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const api = getAPIClient();
-        const response = await api.get(`/api/auth/profile`);
-        setUser(response.data);
+  // useSWR para fazer a requisição ao perfil
+  const { data: user, error, isValidating } = useSWR(`/api/auth/profile`, fetcher, {
+    revalidateOnFocus: true,
+    refreshInterval: 15000, // Revalida a cada 15 segundos
+  });
 
-        // Preenche o formulário com os dados do usuário
-        Object.keys(response.data).forEach((field) =>
-          setValue(field as keyof User, response.data[field])
-        );
-      } catch (error) {
-        setErrorMessage("Erro ao carregar o perfil do usuário.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [setValue]);
+  // Preenche o formulário com os dados carregados
+  React.useEffect(() => {
+    if (user) {
+      Object.keys(user).forEach((field) => setValue(field as keyof User, user[field]));
+    }
+  }, [user, setValue]);
 
   // Função para converter a imagem em Base64
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,9 +77,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const onSubmit = async (
-    formData: User & { senha?: string; confirmarSenha?: string }
-  ) => {
+  const onSubmit = async (formData: User & { senha?: string; confirmarSenha?: string }) => {
     const api = getAPIClient();
     try {
       const cookies = parseCookies();
@@ -96,11 +85,9 @@ const ProfilePage: React.FC = () => {
       const token = cookies["token"];
 
       // Verifica se a senha foi fornecida e se coincide com a confirmação
-      if (formData.senha) {
-        if (formData.senha !== formData.confirmarSenha) {
-          setErrorMessage("As senhas não coincidem.");
-          return;
-        }
+      if (formData.senha && formData.senha !== formData.confirmarSenha) {
+        alert("As senhas não coincidem.");
+        return;
       }
 
       // Envia o formulário com os dados atualizados
@@ -116,39 +103,17 @@ const ProfilePage: React.FC = () => {
       setIsEditing(false);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        setErrorMessage(`Erro ao atualizar o perfil: ${error.response?.data}`);
+        alert(`Erro ao atualizar o perfil: ${error.response?.data}`);
       } else if (error instanceof Error) {
-        setErrorMessage(`Erro ao atualizar o perfil: ${error.message}`);
+        alert(`Erro ao atualizar o perfil: ${error.message}`);
       }
     }
   };
 
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
-
-  if (errorMessage) {
-    return (
-      <div>
-        <Layout>
-          <div className="container m-4 p-2">
-            <h2>{errorMessage}</h2>{" "}
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="py-2 px-4 bg-gray-600 text-white rounded-md w-22 mt-2"
-            >
-              Voltar ao Home
-            </button>
-          </div>
-        </Layout>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <div>Perfil não encontrado.</div>;
-  }
+  // Estado de carregamento ou erro
+  if (isValidating) return <div>Carregando...</div>;
+  if (error) return <div>Erro ao carregar o perfil do usuário.</div>;
+  if (!user) return <div>Perfil não encontrado.</div>;
 
   return (
     <Layout>

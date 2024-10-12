@@ -15,21 +15,21 @@ import IneofLogo from "../../../public/INEOFLogoBranca.svg";
 import Link from "next/link";
 import Image from "next/image";
 import userImage from "../../../public/user.svg";
-import { AuthContext } from "../../contexts/AuthContext"; // Importa o AuthContext
+import { AuthContext } from "../../contexts/AuthContext";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
 const Header: React.FC = () => {
-  const { user, signOut, loading } = useContext(AuthContext); // Puxa o `user`, `loading` e `signOut` do contexto de autenticação
+  const { user, signOut, loading } = useContext(AuthContext);
   const [isAdministrator, setIsAdministrator] = useState(false);
 
   useEffect(() => {
     if (user) {
-      setIsAdministrator(user.nivelPermissao === "superusuario"); // Verifica se o usuário é administrador
+      setIsAdministrator(user.nivelPermissao === "superusuario");
     }
-  }, [user]); // Atualiza quando o `user` muda
+  }, [user]);
 
   const navigation = isAdministrator
     ? [
@@ -48,15 +48,14 @@ const Header: React.FC = () => {
         { name: "EOCEANO", href: "/eoceano" },
       ];
 
-  const profile = ["Meu Perfil", "Minhas Publicações", "Minhas Noticias"];
+  const profile = ["Meu Perfil", "Minhas Publicações", "Minhas Notícias", "Favoritos"];
 
   const handleLogout = () => {
-    signOut(); // Chama a função de logout
+    signOut();
   };
 
-  // Se ainda está carregando o estado de autenticação, retorna null ou um spinner
   if (loading) {
-    return null; // Ou algum tipo de loader/spinner para indicar que está carregando
+    return null;
   }
 
   return (
@@ -86,9 +85,7 @@ const Header: React.FC = () => {
                       <Link key={item.name} href={item.href}>
                         <span
                           className={classNames(
-                            item.name === "Dashboard" && isAdministrator
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-300 hover:bg-green-ineof hover:text-blue-ineof",
+                            "text-gray-300 hover:bg-green-ineof hover:text-blue-ineof",
                             "px-3 py-2 rounded-md text-sm font-medium"
                           )}
                         >
@@ -139,6 +136,10 @@ const Header: React.FC = () => {
                                       ? `/perfil/profile/${user?.idUsuario}`
                                       : item === "Minhas Publicações"
                                       ? `/perfil/publicacoes/minhas-publicacoes`
+                                      : item === "Minhas Notícias"
+                                      ? `/perfil/noticias/minhas-noticias`
+                                      : item === "Favoritos"
+                                      ? `/perfil/favoritos`
                                       : "#"
                                   }
                                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-green-ineof hover:text-blue-ineof hover:rounded-md"
@@ -147,6 +148,7 @@ const Header: React.FC = () => {
                                 </Link>
                               </MenuItem>
                             ))}
+
                             <MenuItem>
                               <Link
                                 href="/configurations"
@@ -201,7 +203,6 @@ const Header: React.FC = () => {
           </div>
 
           <DisclosurePanel className="md:hidden">
-            {/* Aqui, se o usuário estiver logado, renderiza o menu específico */}
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {navigation.map((item) => (
                 <DisclosureButton
@@ -255,6 +256,10 @@ const Header: React.FC = () => {
                           ? `/perfil/profile/${user?.idUsuario}`
                           : item === "Minhas Publicações"
                           ? `/perfil/publicacoes/minhas-publicacoes`
+                          : item === "Minhas Notícias"
+                          ? `/perfil/noticia/minhas-noticias`
+                          : item === "Favoritos"
+                          ? `/perfil/favoritos`
                           : "#"
                       }
                       className="block px-4 py-2 text-base font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded-md"
