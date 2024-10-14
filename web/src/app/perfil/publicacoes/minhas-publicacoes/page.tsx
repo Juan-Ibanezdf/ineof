@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaKey, FaTrashAlt, FaEdit,FaBorderAll } from "react-icons/fa";
+import { FaUser, FaKey, FaTrash, FaEdit, FaBorderAll, FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../../../components/Layout";
 import { AuthContext } from "@/contexts/AuthContext";
+import { FaArrowRightLong } from "react-icons/fa6";
 
 interface Publicacao {
   idPublicacao: string;
@@ -31,7 +32,8 @@ const PublicacoesPage: React.FC = () => {
   const [filtroAnoFim, setFiltroAnoFim] = useState("");
   const [filtroPalavrasChave, setFiltroPalavrasChave] = useState("Todos");
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // Para controlar a exclusão
+  const [showModal, setShowModal] = useState(false); // Controla a exibição do modal de confirmação
   const itensPorPagina = 8;
 
   const getAnos = () => {
@@ -44,15 +46,7 @@ const PublicacoesPage: React.FC = () => {
   };
 
   const getPalavrasChave = () => {
-    return [
-      "Palavras-chave",
-      "IA",
-      "Energia Solar",
-      "Ondas",
-      "Vento",
-      "Hidrogênio",
-      "Baterias",
-    ];
+    return ["Palavras-chave", "IA", "Energia Solar", "Ondas", "Vento", "Hidrogênio", "Baterias"];
   };
 
   const fetchPublicacoes = useCallback(async () => {
@@ -66,43 +60,30 @@ const PublicacoesPage: React.FC = () => {
           categoria: filtroCategoria !== "Todos" ? filtroCategoria : undefined,
           ano_inicio: filtroAnoInicio,
           ano_fim: filtroAnoFim,
-          palavras_chave:
-            filtroPalavrasChave !== "Todos" ? filtroPalavrasChave : undefined,
+          palavras_chave: filtroPalavrasChave !== "Todos" ? filtroPalavrasChave : undefined,
         },
       });
 
-      const publicacoesMapeadas = response.data.publicacoes.map(
-        (publicacao: any) => ({
-          idPublicacao: publicacao.id_publicacao,
-          titulo: publicacao.titulo,
-          autores: publicacao.autores.join(", "), // Adiciona vírgula e espaço entre autores
-          palavrasChave: publicacao.palavras_chave.join(", "), // Adiciona vírgula e espaço entre palavras-chave
-          categoria: publicacao.categoria,
-          identifier: publicacao.identifier,
-          slug: publicacao.slug,
-          dataCriacao: new Date(publicacao.data_criacao),
-          dataModificacao: new Date(publicacao.data_modificacao),
-          visualizacoes: publicacao.visualizacoes,
-          resumo:
-            publicacao.resumo.length > 70
-              ? publicacao.resumo.substring(0, 70) + "..."
-              : publicacao.resumo, // Limita o resumo
-        })
-      );
+      const publicacoesMapeadas = response.data.publicacoes.map((publicacao: any) => ({
+        idPublicacao: publicacao.id_publicacao,
+        titulo: publicacao.titulo,
+        autores: publicacao.autores.join(", "), // Autores separados por vírgula
+        palavrasChave: publicacao.palavras_chave.join(", "), // Palavras-chave separadas por vírgula
+        categoria: publicacao.categoria,
+        identifier: publicacao.identifier,
+        slug: publicacao.slug,
+        dataCriacao: new Date(publicacao.data_criacao),
+        dataModificacao: new Date(publicacao.data_modificacao),
+        visualizacoes: publicacao.visualizacoes,
+        resumo: publicacao.resumo.length > 70 ? publicacao.resumo.substring(0, 70) + "..." : publicacao.resumo, // Resumo limitado
+      }));
 
       setPublicacoes(publicacoesMapeadas);
       setTotalPublicacoes(response.data.total);
     } catch (error) {
       console.error("Erro ao obter as publicações", error);
     }
-  }, [
-    paginaAtual,
-    filtroCategoria,
-    filtroAnoInicio,
-    filtroAnoFim,
-    filtroPalavrasChave,
-    searchTerm,
-  ]);
+  }, [paginaAtual, filtroCategoria, filtroAnoInicio, filtroAnoFim, filtroPalavrasChave, searchTerm]);
 
   useEffect(() => {
     fetchPublicacoes();
@@ -123,18 +104,31 @@ const PublicacoesPage: React.FC = () => {
     fetchPublicacoes();
   };
 
-  const totalPaginas = Math.ceil(totalPublicacoes / itensPorPagina);
+  const abrirModalExcluir = (idPublicacao: string) => {
+    setConfirmDeleteId(idPublicacao);
+    setShowModal(true); // Abre o modal
+  };
 
-  const handleDelete = async (idPublicacao: string) => {
-    try {
-      const api = getAPIClient();
-      await api.delete(`/api/publicacoes/${idPublicacao}`);
-      fetchPublicacoes();
-      setConfirmDeleteId(null);
-    } catch (error) {
-      console.error("Erro ao excluir publicação", error);
+  const confirmarExcluir = async () => {
+    if (confirmDeleteId) {
+      try {
+        const api = getAPIClient();
+        await api.delete(`/api/publicacoes/${confirmDeleteId}`);
+        fetchPublicacoes(); // Atualiza a lista de publicações após exclusão
+        setConfirmDeleteId(null);
+        setShowModal(false); // Fecha o modal
+      } catch (error) {
+        console.error("Erro ao excluir publicação", error);
+      }
     }
   };
+
+  const cancelarExcluir = () => {
+    setConfirmDeleteId(null);
+    setShowModal(false); // Fecha o modal sem excluir
+  };
+
+  const totalPaginas = Math.ceil(totalPublicacoes / itensPorPagina);
 
   const renderPublicacoes = () => {
     if (loading) {
@@ -146,50 +140,36 @@ const PublicacoesPage: React.FC = () => {
     }
 
     return publicacoes.map((pub) => (
-      <div
-        key={pub.idPublicacao}
-        className=" border-b flex justify-between items-center my-1"
-      >
+      <div key={pub.idPublicacao} className="border-b flex justify-between items-center my-1">
         <div>
-          <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">
-            {pub.titulo}
-          </h3>
+          <h3 className="text-lg font-semibold text-blue-ineof ">{pub.titulo}</h3>
 
           <div className="flex items-center mt-2">
             <FaUser className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.autores}</p>{" "}
-            {/* Agora com vírgula */}
+            <p className="text-sm text-gray-600">{pub.autores}</p>
           </div>
 
           <div className="flex items-center mt-1">
             <FaKey className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.palavrasChave}</p>{" "}
-            {/* Agora com vírgula */}
+            <p className="text-sm text-gray-600">{pub.palavrasChave}</p>
           </div>
 
           <div className="flex items-center mt-1">
             <FaBorderAll className="text-gray-600 mr-2" />
-            <p className="text-sm text-gray-600">{pub.categoria}</p>{" "}
-            {/* Agora com vírgula */}
+            <p className="text-sm text-gray-600">{pub.categoria}</p>
           </div>
-          
 
           <div className="mt-1 text-sm text-gray-600">
-            <strong>Resumo: </strong> {pub.resumo}{" "}
-            {/* Limita o resumo a 70 caracteres */}
+            <strong>Resumo: </strong> {pub.resumo}
           </div>
-
-
 
           <div className="flex items-center mt-1 text-sm text-gray-600">
             <span>
-              <strong>Data de criação:</strong>{" "}
-              {pub.dataCriacao.toLocaleDateString()}{" "}
+              <strong>Data de criação:</strong> {pub.dataCriacao.toLocaleDateString()}{" "}
               {pub.dataCriacao.toLocaleTimeString()}
             </span>
             <span className="ml-4">
-              <strong>Última modificação:</strong>{" "}
-              {pub.dataModificacao.toLocaleDateString()}{" "}
+              <strong>Última modificação:</strong> {pub.dataModificacao.toLocaleDateString()}{" "}
               {pub.dataModificacao.toLocaleTimeString()}
             </span>
             <span className="ml-4">
@@ -197,10 +177,8 @@ const PublicacoesPage: React.FC = () => {
             </span>
           </div>
 
-          <Link
-            href={`/perfil/publicacoes/minhas-publicacoes/publicacao/${pub.identifier}/${pub.slug}`}
-          >
-            <span className="inline-block mt-4 text-lg text-blue-500 hover:text-blue-700 flex items-center">
+          <Link href={`/perfil/publicacoes/minhas-publicacoes/publicacao/${pub.identifier}/${pub.slug}`}>
+            <span className="inline-block mt-4 text-lg text-blue-500 hover:text-blue-900 flex items-center mb-4">
               Editar publicação
               <FaEdit className="ml-2 text-lg" />
             </span>
@@ -210,28 +188,27 @@ const PublicacoesPage: React.FC = () => {
         {user && (
           <>
             <button
-              onClick={() => setConfirmDeleteId(pub.idPublicacao)}
-              className=" ml-4 text-gray-600 hover:text-red-500"
+              onClick={() => abrirModalExcluir(pub.idPublicacao)}
+              className="ml-4 text-gray-600 hover:text-red-500"
             >
-              <FaTrashAlt size={30} />
+              <FaTrash size={20} />
             </button>
 
-            {confirmDeleteId === pub.idPublicacao && (
-              <div className="bg-gray-100 p-4 rounded shadow-lg absolute z-10">
-                <p>Você deseja realmente excluir a publicação?</p>
-                <div className="flex mt-4">
-                  <button
-                    onClick={() => handleDelete(pub.idPublicacao)}
-                    className="bg-red-500 text-white px-4 py-2 rounded mr-2"
-                  >
-                    Excluir Publicação
-                  </button>
-                  <button
-                    onClick={() => setConfirmDeleteId(null)}
-                    className="bg-gray-300 text-black px-4 py-2 rounded"
-                  >
-                    Cancelar
-                  </button>
+            {confirmDeleteId === pub.idPublicacao && showModal && (
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50 ">
+                <div className="bg-white p-6 rounded shadow-lg text-center ">
+                  <h3 className="text-lg mb-4">Tem certeza que deseja excluir a publicação?</h3>
+                  <div className="flex justify-center space-x-4 ">
+                    <button onClick={confirmarExcluir} className="bg-red-600 text-white px-4 py-2 rounded  hover:bg-red-800">
+                    <div className="flex items-center">
+                  <FaTrash size={15} className="text-gray-white mr-2"/>
+                  Excluir
+                </div>
+                    </button>
+                    <button onClick={cancelarExcluir} className="bg-gray-400 hover:bg-gray-800 text-white px-4 py-2 rounded">
+                  Cancelar
+                </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -252,9 +229,7 @@ const PublicacoesPage: React.FC = () => {
         <button
           key={i}
           onClick={() => setPaginaAtual(i)}
-          className={`px-3 py-1 mx-1 rounded ${
-            i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"
-          }`}
+          className={`px-3 py-1 mx-1 rounded ${i === paginaAtual ? "bg-blue-500 hover:bg-blue-800 text-white" : "bg-gray-200 hover:bg-gray-500 hover:text-white"}`}
         >
           {i}
         </button>
@@ -264,20 +239,15 @@ const PublicacoesPage: React.FC = () => {
     return (
       <div className="flex justify-start mt-4">
         {paginaAtual > 1 && (
-          <button
-            onClick={() => setPaginaAtual(paginaAtual - 1)}
-            className="px-3 py-1 mx-1 rounded bg-gray-200"
-          >
-            &lt;
+          <button onClick={() => setPaginaAtual(paginaAtual - 1)} className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white">
+           
+            <FaArrowLeft />
           </button>
         )}
         {paginas}
         {paginaAtual < totalPaginas && (
-          <button
-            onClick={() => setPaginaAtual(paginaAtual + 1)}
-            className="px-3 py-1 mx-1 rounded bg-gray-200"
-          >
-            &gt;
+          <button onClick={() => setPaginaAtual(paginaAtual + 1)} className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white">
+             <FaArrowRight />
           </button>
         )}
       </div>
@@ -351,19 +321,13 @@ const PublicacoesPage: React.FC = () => {
               </option>
             ))}
           </select>
-
-          <button
-            onClick={filtrarPublicacoes}
-            className="bg-blue-500 text-white p-2 rounded"
-          >
-            Buscar
-          </button>
-          <button
-            onClick={limparFiltros}
-            className="bg-gray-400 text-white p-2 rounded ml-4"
-          >
+          <button onClick={limparFiltros} className="bg-gray-400 hover:bg-gray-800 text-white p-2 rounded">
             Limpar Filtros
           </button>
+          <button onClick={filtrarPublicacoes} className="bg-green-ineof hover:bg-green-800 text-white p-2 rounded  ml-4">
+            Buscar
+          </button>
+        
         </div>
 
         {/* Lista de publicações */}
@@ -374,10 +338,10 @@ const PublicacoesPage: React.FC = () => {
         {/* Paginação */}
         {renderPaginacao()}
 
-        {/* Botões para Nova Publicação e Favoritos */}
+        {/* Botões para Nova Publicação */}
         <div className="mt-8 flex justify-start space-x-4">
           <Link href="/perfil/publicacoes/nova-publicacao">
-            <button className="bg-green-500 text-white px-4 py-2 rounded">
+            <button className="bg-green-500 hover:bg-green-800 text-white px-4 py-2 rounded">
               Nova Publicação
             </button>
           </Link>

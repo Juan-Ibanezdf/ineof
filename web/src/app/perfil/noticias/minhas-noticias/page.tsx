@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaTrashAlt, FaEdit, FaKey, FaBorderAll } from "react-icons/fa";
+import { FaUser, FaTrashAlt, FaEdit, FaKey, FaBorderAll, FaTrash, FaArrowRight, FaArrowLeft } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../../../components/Layout";
 import { AuthContext } from "@/contexts/AuthContext";
@@ -34,6 +34,7 @@ const NoticiasPage: React.FC = () => {
   const [filtroTags, setFiltroTags] = useState("Todos");
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false); // Estado do modal de confirmação
   const itensPorPagina = 8;
 
   const getAnos = () => {
@@ -87,7 +88,7 @@ const NoticiasPage: React.FC = () => {
           noticia.lead && noticia.lead.length > 70
             ? noticia.lead.substring(0, 70) + "..."
             : noticia.lead,
-        nomeAutor: noticia.nome_autor,
+        nomeAutor: noticia.nome_de_usuario,
         imagemNoticia: noticia.imagem_noticia,
         status: noticia.status,
       }));
@@ -126,18 +127,31 @@ const NoticiasPage: React.FC = () => {
     fetchNoticias();
   };
 
-  const totalPaginas = Math.ceil(totalNoticias / itensPorPagina);
+  const abrirModalExcluir = (idNoticia: string) => {
+    setConfirmDeleteId(idNoticia);
+    setShowModal(true); // Mostra o modal de confirmação
+  };
 
-  const handleDelete = async (idNoticia: string) => {
-    try {
-      const api = getAPIClient();
-      await api.delete(`/api/noticias/${idNoticia}`);
-      fetchNoticias();
-      setConfirmDeleteId(null);
-    } catch (error) {
-      console.error("Erro ao excluir notícia", error);
+  const confirmarExcluir = async () => {
+    if (confirmDeleteId) {
+      try {
+        const api = getAPIClient();
+        await api.delete(`/api/noticias/${confirmDeleteId}`);
+        fetchNoticias();
+        setConfirmDeleteId(null);
+        setShowModal(false); // Fecha o modal após a exclusão
+      } catch (error) {
+        console.error("Erro ao excluir notícia", error);
+      }
     }
   };
+
+  const cancelarExcluir = () => {
+    setConfirmDeleteId(null);
+    setShowModal(false); // Fecha o modal sem excluir
+  };
+
+  const totalPaginas = Math.ceil(totalNoticias / itensPorPagina);
 
   const renderNoticias = () => {
     if (loading) {
@@ -154,7 +168,7 @@ const NoticiasPage: React.FC = () => {
         className=" border-b flex justify-between items-center my-1"
       >
         <div>
-          <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">
+          <h3 className="text-lg font-semibold text-blue-ineof">
             {noticia.titulo}
           </h3>
 
@@ -192,7 +206,7 @@ const NoticiasPage: React.FC = () => {
           <Link
             href={`/perfil/noticias/minhas-noticias/noticia/${noticia.identifier}/${noticia.slug}`}
           >
-            <span className="inline-block mt-4 text-lg text-blue-500 hover:text-blue-700 flex items-center">
+            <span className="inline-block mt-4 text-lg text-blue-500 hover:text-blue-900 flex items-center">
               Editar notícia
               <FaEdit className="ml-2 text-lg" />
             </span>
@@ -202,31 +216,11 @@ const NoticiasPage: React.FC = () => {
         {user && (
           <>
             <button
-              onClick={() => setConfirmDeleteId(noticia.idNoticia)}
+              onClick={() => abrirModalExcluir(noticia.idNoticia)}
               className=" ml-4 text-gray-600 hover:text-red-500"
             >
-              <FaTrashAlt size={30} />
+              <FaTrash size={20} />
             </button>
-
-            {confirmDeleteId === noticia.idNoticia && (
-              <div className="bg-gray-100 p-4 rounded shadow-lg absolute z-10">
-                <p>Você deseja realmente excluir a notícia?</p>
-                <div className="flex mt-4">
-                  <button
-                    onClick={() => handleDelete(noticia.idNoticia)}
-                    className="bg-red-500 text-white px-4 py-2 rounded mr-2"
-                  >
-                    Excluir Notícia
-                  </button>
-                  <button
-                    onClick={() => setConfirmDeleteId(null)}
-                    className="bg-gray-300 text-black px-4 py-2 rounded"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -245,7 +239,7 @@ const NoticiasPage: React.FC = () => {
           key={i}
           onClick={() => setPaginaAtual(i)}
           className={`px-3 py-1 mx-1 rounded ${
-            i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"
+            i === paginaAtual ? "bg-blue-500 hover:bg-blue-800 text-white" : "bg-gray-200 hover:bg-gray-500 hover:text-white"
           }`}
         >
           {i}
@@ -258,18 +252,18 @@ const NoticiasPage: React.FC = () => {
         {paginaAtual > 1 && (
           <button
             onClick={() => setPaginaAtual(paginaAtual - 1)}
-            className="px-3 py-1 mx-1 rounded bg-gray-200"
+            className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white"
           >
-            &lt;
+            <FaArrowLeft />
           </button>
         )}
         {paginas}
         {paginaAtual < totalPaginas && (
           <button
             onClick={() => setPaginaAtual(paginaAtual + 1)}
-            className="px-3 py-1 mx-1 rounded bg-gray-200"
+            className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white"
           >
-            &gt;
+            <FaArrowRight />
           </button>
         )}
       </div>
@@ -342,19 +336,20 @@ const NoticiasPage: React.FC = () => {
               </option>
             ))}
           </select>
-
-          <button
-            onClick={filtrarNoticias}
-            className="bg-blue-500 text-white p-2 rounded"
-          >
-            Buscar
-          </button>
           <button
             onClick={limparFiltros}
-            className="bg-gray-400 text-white p-2 rounded ml-4"
+            className="bg-gray-400 hover:bg-gray-800 text-white p-2 rounded "
           >
             Limpar Filtros
           </button>
+
+          <button
+            onClick={filtrarNoticias}
+            className="bg-green-ineof hover:bg-green-800 text-white p-2 rounded ml-4"
+          >
+            Buscar
+          </button>
+       
         </div>
 
         {/* Lista de notícias */}
@@ -368,11 +363,31 @@ const NoticiasPage: React.FC = () => {
         {/* Botão para Nova Notícia */}
         <div className="mt-8 flex justify-start space-x-4">
           <Link href="/perfil/noticia/nova-noticia">
-            <button className="bg-green-500 text-white px-4 py-2 rounded">
+            <button className="bg-green-ineof hover:bg-green-800 text-white px-4 py-2 rounded">
               Nova Notícia
             </button>
           </Link>
         </div>
+
+        {/* Modal de confirmação de exclusão */}
+        {showModal && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50">
+            <div className="bg-white p-6 rounded shadow-lg text-center">
+              <h3 className="text-lg mb-4">Tem certeza que deseja excluir a notícia?</h3>
+              <div className="flex justify-center space-x-4">
+                <button onClick={confirmarExcluir} className="bg-red-600 text-white px-4 py-2 rounded   hover:bg-red-800 ">
+                <div className="flex items-center">
+                  <FaTrash size={15} className="text-gray-white mr-2"/>
+                  Excluir
+                </div>
+                </button>
+                <button onClick={cancelarExcluir} className="bg-gray-400 hover:bg-gray-800 text-white px-4 py-2 rounded">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

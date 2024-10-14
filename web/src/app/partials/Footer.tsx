@@ -107,31 +107,32 @@ const Footer = () => {
           </div>
 
           {/* Terceira Coluna: Publicações */}
-          <div className="mr-1">
-            <h4 className="font-bold text-white mb-2">Publicações</h4>
-            <ul className="text-slate-400">
-              <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Teses
-                </a>
-              </li>
-              <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Dissertações
-                </a>
-              </li>
-              <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Congressos
-                </a>
-              </li>
-              <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Periódicos
-                </a>
-              </li>
-            </ul>
-          </div>
+<div className="mr-1">
+  <h4 className="font-bold text-white mb-2">Publicações</h4>
+  <ul className="text-slate-400">
+    <li>
+      <Link className="hover:text-green-ineof" href="/publicacoes?categoria=Tese">
+        Teses
+      </Link>
+    </li>
+    <li>
+      <Link className="hover:text-green-ineof" href="/publicacoes?categoria=Dissertação">
+        Dissertações
+      </Link>
+    </li>
+    <li>
+      <Link className="hover:text-green-ineof" href="/publicacoes?categoria=Congresso">
+        Congressos
+      </Link>
+    </li>
+    <li>
+      <Link className="hover:text-green-ineof" href="/publicacoes?categoria=Periódico">
+        Periódicos
+      </Link>
+    </li>
+  </ul>
+</div>
+
 
           {/* Quarta Coluna: Financiamento */}
           <div className="mr-1">
@@ -170,23 +171,24 @@ const Footer = () => {
           <div className="mr-1">
             <h4 className="font-bold text-white mb-2">Acesso Rápido</h4>
             <ul className="text-slate-400">
+             
               <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Notícias
+                <a className="hover:text-green-ineof" href="/publicacoes">
+                  Publicações
                 </a>
               </li>
               <li>
-                <a className="hover:text-green-ineof" href="#">
-                  Publicações
+                <a className="hover:text-green-ineof" href="/noticias">
+                  Notícias
                 </a>
               </li>{" "}
               <li>
-                <a className="hover:text-green-ineof" href="#">
+                <a className="hover:text-green-ineof" href="/eosolar">
                   EOSOLAR
                 </a>
               </li>
               <li>
-                <a className="hover:text-green-ineof" href="#">
+                <a className="hover:text-green-ineof" href="/eoceoano">
                   EOCEANO
                 </a>
               </li>

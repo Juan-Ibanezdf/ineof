@@ -61,7 +61,7 @@ const NoticiaPage: React.FC = () => {
           dataRevisao: new Date(data.data_revisao),
           visualizacoes: data.visualizacoes,
           conteudo: data.conteudo || "",
-          nomeAutor: data.nome_autor || "Autor desconhecido"
+          nomeAutor: data.nome_de_usuario || "Autor desconhecido"
         });
 
         setFormData({

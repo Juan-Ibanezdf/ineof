@@ -82,7 +82,7 @@ const NoticiaPage: React.FC = () => {
           <div className="flex mt-4">
             <button
               onClick={() => history.back()}
-              className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+              className="bg-gray-500 hover:bg-gray-800 text-white px-6 py-3 rounded-lg"
             >
               Voltar
             </button>

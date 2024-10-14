@@ -1,61 +1,52 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { getAPIClient } from "../../services/axios";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { getAPIClient } from "@/services/axios";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import { FaChevronLeft, FaChevronRight, FaExternalLinkAlt } from "react-icons/fa";
 
 interface Publicacao {
   idPublicacao: string;
   titulo: string;
   resumo: string;
   categoria: string;
-  banner: string;
-  palavrasChave: string[]; // Agora array
-  autores: string[]; // Agora array
-  publicacoes: string;
-  revisadoPor: string;
+  autores: string[];
   slug: string;
-  visibilidade: boolean;
-  user: string;
   identifier: string;
-  pdf: Buffer | null;
-  link: string | null;
-  dataCriacao: Date;
-  dataModificacao: Date;
-  visualizacoes: number;
 }
+
+// Função para truncar o texto
+const truncateText = (text: string, maxLength: number) => {
+  if (text.length > maxLength) {
+    return text.slice(0, maxLength) + "...";
+  }
+  return text;
+};
 
 const PublicacoesPage: React.FC = () => {
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
-  const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
-  const itemsPerPage = 3; // Número de publicações exibidas por vez
 
   useEffect(() => {
     const fetchPublicacoes = async () => {
       try {
         const api = getAPIClient();
         const response = await api.get("/api/publicacoes");
-        const publicacoesMapeadas = response.data.publicacoes.map((publicacao: any) => ({
-          idPublicacao: publicacao.id_publicacao,
-          titulo: publicacao.titulo,
-          resumo: publicacao.resumo,
-          categoria: publicacao.categoria,
-          banner: publicacao.banner,
-          palavrasChave: publicacao.palavras_chave, // Agora array
-          autores: publicacao.autores, // Agora array
-          publicacoes: publicacao.publicacoes,
-          revisadoPor: publicacao.revisado_por,
-          slug: publicacao.slug,
-          visibilidade: publicacao.visibilidade,
-          user: publicacao.nome_de_usuario,
-          identifier: publicacao.identifier,
-          pdf: publicacao.pdf,
-          link: publicacao.link,
-          dataCriacao: new Date(publicacao.data_criacao),
-          dataModificacao: new Date(publicacao.data_modificacao),
-          visualizacoes: publicacao.visualizacoes,
-        }));
+        const publicacoesMapeadas = response.data.publicacoes
+          .slice(0, 8)
+          .map((publicacao: any) => ({
+            idPublicacao: publicacao.id_publicacao,
+            titulo: publicacao.titulo,
+            resumo: publicacao.resumo,
+            categoria: publicacao.categoria,
+            autores: publicacao.autores,
+            slug: publicacao.slug,
+            identifier: publicacao.identifier,
+          }));
         setPublicacoes(publicacoesMapeadas);
       } catch (error) {
         console.error("Erro ao obter as publicações", error);
@@ -67,69 +58,73 @@ const PublicacoesPage: React.FC = () => {
     fetchPublicacoes();
   }, []);
 
-  const nextPublication = () => {
-    setCurrent((prev) => (prev + 1) % publicacoes.length);
-  };
-
-  const prevPublication = () => {
-    setCurrent((prev) => (prev - 1 + publicacoes.length) % publicacoes.length);
-  };
-
   if (loading) {
     return <div>Carregando publicações...</div>;
   }
 
-  // Cálculo para selecionar as publicações da página atual
-  const currentPublicacoes = publicacoes.slice(current, current + itemsPerPage);
-
   return (
     <div className="w-full p-10 bg-blue-ineof text-white py-12">
-      <div className="relative flex items-center justify-between">
-        {/* Botão de navegação à esquerda */}
-        <button onClick={prevPublication} className="text-green-500 text-2xl absolute left-4 z-10">&#10094;</button>
+      <h2 className="text-3xl font-bold text-center mb-8">Publicações</h2>
 
-        {/* Contêiner do carrossel com cards */}
-        <div className="flex overflow-hidden w-[90%] mx-auto justify-center">
-          {/* Meio card à esquerda */}
-          {current > 0 && (
-            <div className="flex-none w-1/4 mx-2 p-4 rounded-lg bg-white text-black shadow-lg transform scale-90 opacity-50">
-              <h3 className="text-lg font-semibold">{publicacoes[current - 1].titulo}</h3>
-              <p>{publicacoes[current - 1].autores.join(', ')}</p> {/* Autores agora como string separada por vírgulas */}
-            </div>
-          )}
-          
-          {/* Cards atuais */}
-          {currentPublicacoes.map((pub, index) => (
-            <div key={index} className="flex-none w-72 mx-2 p-4 rounded-lg bg-white text-black shadow-lg transition duration-300 ease-in-out transform scale-100">
-              <h3 className="text-lg font-semibold">{pub.titulo}</h3>
-              <p>{pub.autores.join(', ')}</p> {/* Autores agora como string separada por vírgulas */}
-              <p>{pub.categoria}</p>
-              <p className="mb-4">{pub.resumo}</p>
-              <Link href={`/publicacoes/publicacao/${pub.identifier}/${pub.slug}`}>
-                <span className="inline-block bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">Ver detalhes</span>
-              </Link>
-            </div>
+      <div className="relative flex items-center justify-between mx-24">
+        <Swiper
+          modules={[Navigation]}
+          spaceBetween={10}
+          slidesPerView={5.5}
+          loop={true}
+          navigation={{
+            nextEl: ".publicacoes-swiper-button-next",
+            prevEl: ".publicacoes-swiper-button-prev",
+          }}
+          centeredSlides={true}
+          breakpoints={{
+            640: { slidesPerView: 1.2 },
+            768: { slidesPerView: 2.5 },
+            1024: { slidesPerView: 3.5 },
+            1280: { slidesPerView: 4.5 },
+          }}
+        >
+          {publicacoes.map((pub, index) => (
+            <SwiperSlide key={index}>
+              <div className="bg-indigo-50 rounded-lg h-60 flex flex-col justify-center items-center p-4 text-black shadow-lg">
+                <h3 className="text-lg font-semibold text-indigo-600 mb-2">
+                  {pub.titulo}
+                </h3>
+                <p className="text-sm mb-4">{pub.autores.join(", ")}</p>
+                <p className="text-sm text-gray-700">{pub.categoria}</p>
+                <p className="text-xs mt-2 mb-4 text-gray-600">
+                  {truncateText(pub.resumo, 30)}
+                </p>
+                <Link href={`/publicacoes/publicacao/${pub.identifier}/${pub.slug}`}>
+                  <span className="inline-block bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 text-sm flex items-center gap-1">
+                    Ver detalhes <FaExternalLinkAlt />
+                  </span>
+                </Link>
+              </div>
+            </SwiperSlide>
           ))}
 
-          {/* Card para "Ver mais publicações" */}
-          <div className="flex-none w-72 mx-2 p-4 rounded-lg bg-white text-black shadow-lg cursor-pointer">
-            <Link href="/publicacoes">
-              <span className="text-lg font-semibold text-center block mb-5">Ver mais publicações</span>
-              <button className="text-center rounded-lg bg-green-ineof text-white">Clique aqui para ver todas as publicações disponíveis.</button>
-            </Link>
-          </div>
-
-          {/* Meio card à direita */}
-          {current < publicacoes.length - itemsPerPage && (
-            <div className="flex-none w-1/4 mx-2 p-4 rounded-lg bg-white text-black shadow-lg transform scale-90 opacity-50">
-              <h3 className="text-lg font-semibold">{publicacoes[current + itemsPerPage].titulo}</h3>
-              <p>{publicacoes[current + itemsPerPage].autores.join(', ')}</p> {/* Autores agora como string separada por vírgulas */}
+          <SwiperSlide>
+            <div className="bg-indigo-50 rounded-lg h-60 flex flex-col justify-center items-center p-4 text-black shadow-lg cursor-pointer">
+              <h3 className="text-lg font-semibold text-indigo-600 mb-4">
+                Ver mais publicações
+              </h3>
+              <Link href="/publicacoes">
+                <button className="bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 text-sm flex items-center gap-1">
+                  Veja todas as Publicações <FaExternalLinkAlt />
+                </button>
+              </Link>
             </div>
-          )}
-        </div>
+          </SwiperSlide>
+        </Swiper>
 
-        {/* Botão de navegação à direita */}
-        <button onClick={nextPublication} className="text-green-500 text-2xl absolute right-4 z-10">&#10095;</button>
+        {/* Setas de navegação com identificadores exclusivos */}
+        <button className="publicacoes-swiper-button-prev absolute z-10 text-blue-600 hover:text-blue-ineof  p-2  left-4">
+          <FaChevronLeft  size={30}/>
+        </button>
+        <button className="publicacoes-swiper-button-next absolute z-10 text-blue-600  hover:text-blue-ineof  p-2  right-4">
+          <FaChevronRight size={30} />
+        </button>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaBorderAll } from "react-icons/fa";
+import { FaUser, FaBorderAll, FaArrowLeft, FaArrowRight, FaExternalLinkAlt } from "react-icons/fa";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../components/Layout";
 
@@ -107,7 +107,7 @@ const NoticiasPage: React.FC = () => {
     return noticias.map((noticia) => (
       <div key={noticia.id_noticia} className="py-4 border-b flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">
+          <h3 className="text-lg font-semibold text-blue-ineof">
             {noticia.titulo}
           </h3>
 
@@ -135,7 +135,7 @@ const NoticiasPage: React.FC = () => {
           </div>
 
           <Link href={`/noticias/noticia/${noticia.identifier}/${noticia.slug}`}>
-            <span className="inline-block mt-4 text-blue-500 hover:text-blue-700">Saiba mais</span>
+            <span className="inline-block mt-4 text-blue-500 hover:text-blue-800 flex items-center gap-1">Saiba mais  <FaExternalLinkAlt /></span>
           </Link>
         </div>
       </div>
@@ -153,7 +153,7 @@ const NoticiasPage: React.FC = () => {
         <button
           key={i}
           onClick={() => setPaginaAtual(i)}
-          className={`px-3 py-1 mx-1 rounded ${i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-3 py-1 mx-1 rounded ${i === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200 bg-green-ineof hover:bg-green-800"}`}
         >
           {i}
         </button>
@@ -163,14 +163,14 @@ const NoticiasPage: React.FC = () => {
     return (
       <div className="flex justify-start mt-4">
         {paginaAtual > 1 && (
-          <button onClick={() => setPaginaAtual(paginaAtual - 1)} className="px-3 py-1 mx-1 rounded bg-gray-200">
-            &lt;
+          <button onClick={() => setPaginaAtual(paginaAtual - 1)} className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white">
+           <FaArrowLeft />
           </button>
         )}
         {paginas}
         {paginaAtual < totalPaginas && (
-          <button onClick={() => setPaginaAtual(paginaAtual + 1)} className="px-3 py-1 mx-1 rounded bg-gray-200">
-            &gt;
+          <button onClick={() => setPaginaAtual(paginaAtual + 1)} className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white">
+             <FaArrowRight />
           </button>
         )}
       </div>
@@ -230,13 +230,13 @@ const NoticiasPage: React.FC = () => {
               </option>
             ))}
           </select>
-
-          <button onClick={filtrarNoticias} className="bg-blue-500 text-white p-2 rounded">
-            Buscar
-          </button>
-          <button onClick={limparFiltros} className="bg-gray-400 text-white p-2 rounded ml-4">
+          <button onClick={limparFiltros} className="bg-gray-400 hover:bg-gray-800 text-white p-2 rounded ">
             Limpar Filtros
           </button>
+          <button onClick={filtrarNoticias} className="bg-green-ineof hover:bg-green-800 text-white p-2 rounded ml-4">
+            Buscar
+          </button>
+         
         </div>
 
         {/* Lista de notícias */}

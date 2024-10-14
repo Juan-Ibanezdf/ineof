@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
-import { FaUser, FaKey, FaBorderAll } from "react-icons/fa";
+import { FaUser, FaKey, FaBorderAll, FaArrowRight, FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa";
+import { useSearchParams } from "next/navigation";  // Alterar para useSearchParams
 import { getAPIClient } from "@/services/axios";
 import Layout from "../components/Layout";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -35,6 +36,8 @@ const PublicacoesPage: React.FC = () => {
   const itensPorPagina = 8;
 
 
+  const searchParams = useSearchParams();   // Hook para acessar os query params
+
   // Função para gerar os anos disponíveis no filtro de período
   const getAnos = () => {
     const currentYear = new Date().getFullYear();
@@ -48,6 +51,15 @@ const PublicacoesPage: React.FC = () => {
   const getPalavrasChave = () => {
     return ["Palavras-chave", "IA", "Energia Solar", "Ondas", "Vento", "Hidrogênio", "Baterias"];
   };
+
+
+   // Pegando o filtro de categoria da URL
+   useEffect(() => {
+    const categoriaQueryParam = searchParams.get("categoria");
+    if (categoriaQueryParam) {
+      setFiltroCategoria(categoriaQueryParam);
+    }
+  }, [searchParams]);
 
   const fetchPublicacoes = useCallback(async () => {
     try {
@@ -120,7 +132,7 @@ const PublicacoesPage: React.FC = () => {
     return publicacoes.map((pub) => (
       <div key={pub.idPublicacao} className="py-4 border-b flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold text-blue-900 hover:text-blue-700">{pub.titulo}</h3>
+          <h3 className="text-lg font-semibold text-blue-ineof">{pub.titulo}</h3>
           <div className="flex items-center mt-2">
             <FaUser className="text-gray-600 mr-2" />
             <p className="text-sm text-gray-600">{pub.autores.join("; ")}</p>
@@ -152,7 +164,7 @@ const PublicacoesPage: React.FC = () => {
           </div>
 
           <Link href={`/publicacoes/publicacao/${pub.identifier}/${pub.slug}`}>
-            <span className="inline-block mt-4 text-blue-500 hover:text-blue-700">Saiba mais</span>
+            <span className="inline-block mt-4 text-blue-500 hover:text-blue-800 flex items-center gap-1">Saiba mais  <FaExternalLinkAlt /></span>
           </Link>
         </div>
 
@@ -230,13 +242,13 @@ const PublicacoesPage: React.FC = () => {
               </option>
             ))}
           </select>
-
-          <button onClick={filtrarPublicacoes} className="bg-blue-500 text-white p-2 rounded">
-            Buscar
-          </button>
-          <button onClick={limparFiltros} className="bg-gray-400 text-white p-2 rounded ml-4">
+          <button onClick={limparFiltros} className="bg-gray-400 hover:bg-gray-800  text-white p-2 rounded">
             Limpar Filtros
           </button>
+          <button onClick={filtrarPublicacoes} className="bg-green-ineof hover:bg-green-800 text-white p-2 rounded  ml-4">
+            Buscar
+          </button>
+          
         </div>
 
 
@@ -245,20 +257,40 @@ const PublicacoesPage: React.FC = () => {
           {renderPublicacoes()}
         </div>
 
-        {/* Paginação */}
         {totalPaginas > 1 && (
-          <div className="flex justify-start mt-4">
-            {Array.from({ length: totalPaginas }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPaginaAtual(i + 1)}
-                className={`px-3 py-1 mx-1 rounded ${i + 1 === paginaAtual ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-        )}
+  <div className="flex justify-start mt-4">
+    {paginaAtual > 1 && (
+      <button
+        onClick={() => setPaginaAtual(paginaAtual - 1)}
+        className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white"
+      >
+        <FaArrowLeft />
+      </button>
+    )}
+    {Array.from({ length: totalPaginas }, (_, i) => (
+      <button
+        key={i}
+        onClick={() => setPaginaAtual(i + 1)}
+        className={`px-3 py-1 mx-1 rounded ${
+          i + 1 === paginaAtual
+            ? "bg-blue-500 hover:bg-blue-800 text-white"
+            : "bg-gray-200 hover:bg-gray-500 hover:text-white"
+        }`}
+      >
+        {i + 1}
+      </button>
+    ))}
+    {paginaAtual < totalPaginas && (
+      <button
+        onClick={() => setPaginaAtual(paginaAtual + 1)}
+        className="px-3 py-1 mx-1 rounded bg-gray-200 hover:bg-gray-500 hover:text-white"
+      >
+        <FaArrowRight />
+      </button>
+    )}
+  </div>
+)}
+
       </div>
     </Layout>
   );

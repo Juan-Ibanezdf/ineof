@@ -1,9 +1,10 @@
 {
   "pages": {
-    "/publicacoes/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/publicacoes/page.js"
+      "static/css/app/page.css",
+      "static/chunks/app/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,10 +12,80 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/eosolar/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/eosolar/page.js"
+    ],
+    "/noticias/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/noticias/page.js"
+    ],
+    "/eoceano/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/eoceano/page.js"
+    ],
     "/perfil/favoritos/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/perfil/favoritos/page.js"
+    ],
+    "/publicacoes/publicacao/[identifier]/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/publicacoes/publicacao/[identifier]/[slug]/page.js"
+    ],
+    "/publicacoes/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/publicacoes/page.js"
+    ],
+    "/perfil/profile/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/profile/[id]/page.js"
+    ],
+    "/perfil/noticias/minhas-noticias/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/noticias/minhas-noticias/page.js"
+    ],
+    "/perfil/publicacoes/minhas-publicacoes/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/publicacoes/minhas-publicacoes/page.js"
+    ],
+    "/perfil/noticias/minhas-noticias/noticia/[identifier]/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/noticias/minhas-noticias/noticia/[identifier]/[slug]/page.js"
+    ],
+    "/auth/login/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/auth/login/page.js"
+    ],
+    "/perfil/publicacoes/minhas-publicacoes/publicacao/[identifier]/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/publicacoes/minhas-publicacoes/publicacao/[identifier]/[slug]/page.js"
+    ],
+    "/noticias/noticia/[identifier]/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/noticias/noticia/[identifier]/[slug]/page.js"
+    ],
+    "/perfil/publicacoes/nova-publicacao/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/publicacoes/nova-publicacao/page.js"
+    ],
+    "/perfil/noticias/nova-noticia/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/noticias/nova-noticia/page.js"
     ]
   }
 }

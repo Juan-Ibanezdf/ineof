@@ -24,7 +24,7 @@ export default function Home() {
          <PublicacoesPage/>
          <Eventos /> 
          <NossoTime/>
-        <Financiamento/>
+         <Financiamento/>
         </main>
       </Layout>
     </>

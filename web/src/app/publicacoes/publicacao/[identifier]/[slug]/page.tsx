@@ -6,7 +6,7 @@ import useSWR from "swr";
 import { getAPIClient } from "@/services/axios";
 import Layout from "../../../../components/Layout";
 import { AuthContext } from "@/contexts/AuthContext";
-import FavoriteButton from "../../../../components/FavoriteButton"; // Importa o componente de favoritos
+import FavoriteButtonPublicacoes from "../../../../components/FavoriteButtonPublicacoes"; // Importa o componente de favoritos com botão
 
 // Função para buscar dados
 const fetcher = (url: string) =>
@@ -105,12 +105,18 @@ const PublicacaoPage: React.FC = () => {
           <div className="flex mt-4">
             <button
               onClick={() => history.back()}
-              className="bg-gray-500 text-white px-6 py-3 rounded-lg"
+              className="bg-gray-500 hover:bg-gray-800 text-white px-6 py-3 rounded-lg mr-4"
             >
               Voltar
             </button>
 
-          
+            {user && (
+              <FavoriteButtonPublicacoes
+                idPublicacao={publicacao.id_publicacao}
+                userId={user.idUsuario}
+              />
+            )}
+
           </div>
         </div>
       </Layout>
