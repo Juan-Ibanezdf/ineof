@@ -51,7 +51,7 @@ const PublicacaoPage: React.FC = () => {
 
           <p className="text-sm text-gray-500 mb-2">
             <strong>Usuário:</strong>{" "}
-            {publicacao.nomeUsuario || "Não disponível"} |{" "}
+            {publicacao.nome_de_usuario || "Não disponível"} |{" "}
             <strong>Visibilidade:</strong>{" "}
             {publicacao.visibilidade ? "Público" : "Privado"} |{" "}
             <strong>Revisado Por:</strong>{" "}
@@ -60,9 +60,9 @@ const PublicacaoPage: React.FC = () => {
 
           <p className="text-sm text-gray-500 mb-4">
             <strong>Criado em:</strong>{" "}
-            {new Date(publicacao.dataCriacao).toLocaleString()} |{" "}
+            {new Date(publicacao.data_criacao).toLocaleString()} |{" "}
             <strong>Última Modificação:</strong>{" "}
-            {new Date(publicacao.dataModificacao).toLocaleString()} |{" "}
+            {new Date(publicacao.data_modificacao).toLocaleString()} |{" "}
             <strong>Visualizações:</strong> {publicacao.visualizacoes}
           </p>
 

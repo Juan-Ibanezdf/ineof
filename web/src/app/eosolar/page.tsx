@@ -1,176 +1,42 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
+import Carousel from "../components/Carousel";
+import logoEosolarEquatorial from "../../../public/logoEosolarEquatorial.svg";
+import equipeEosolar from "../../../public/equipeEosolar.svg";
+import mapaMaranhao from "../../../public/mapaMaranhao.svg";
+import Layout from "../components/Layout";
 import Image from "next/image";
-import Header from "../partials/Header";
-import Footer from "../partials/Footer";
-import { AuthContext } from "../../contexts/AuthContext";
-
-// Interface para a estrutura dos dados
-interface Equipamento {
-  nome: string;
-  tipo: string;
-  descricao: string;
-}
-
-interface Campanha {
-  titulo: string;
-  data: string;
-  descricao: string;
-}
-
-interface DadosColetados {
-  tipo: string;
-  descricao: string;
-}
-
-interface Trabalho {
-  titulo: string;
-  autores: string;
-  ano: string;
-}
+import NossoTime from "../components/NossoTime";
+import sodar from "../../../public/sodar.svg";
+import PublicacoesPage from "../components/PublicacoesPage";
+import logoUfma from "../../../public/ufma-logo.svg";
+import logoIneof from "../../../public/INEOFLogo.svg";
+import logoFiec from "../../../public/logoFiec.svg";
+import logoEquatorial from "../../../public/logoEquatorial.svg";
+import logoAneel from "../../../public/logoAnel.svg";
+import logoGera from "../../../public/geraMaranhao.svg";
+import logoAlbtech from "../../../public/logoAlbtech.svg";
+import logoCamargo from "../../../public/logoCamargo.svg";
+import logoIEE from "../../../public/logoIEE.svg";
 
 const EOSOLARPage: React.FC = () => {
-  const { user } = React.useContext(AuthContext); // Contexto de autenticação
-  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([]);
-  const [campanhas, setCampanhas] = useState<Campanha[]>([]);
-  const [dados, setDados] = useState<DadosColetados[]>([]);
-  const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
-
-  // Mock de dados (substituir por uma chamada à API se necessário)
-  useEffect(() => {
-    setEquipamentos([
-      {
-        nome: "Sensor Solarimétrico",
-        tipo: "Medição Solar",
-        descricao: "Coleta dados de radiação solar e temperatura ambiente.",
-      },
-      {
-        nome: "Estação Meteorológica",
-        tipo: "Climatologia",
-        descricao: "Monitoramento climático para suportar análises solares.",
-      },
-    ]);
-
-    setCampanhas([
-      {
-        titulo: "Monitoramento Solar 2022",
-        data: "Janeiro - Dezembro 2022",
-        descricao:
-          "Coleta contínua de dados de radiação solar em parceria com a Equatorial Energia.",
-      },
-      {
-        titulo: "Campanha de Teste 2023",
-        data: "Janeiro - Maio 2023",
-        descricao: "Dados experimentais para otimização de painéis solares.",
-      },
-    ]);
-
-    setDados([
-      { tipo: "Radiação Solar", descricao: "Captura de intensidade solar." },
-      {
-        tipo: "Temperatura Ambiente",
-        descricao: "Medição da temperatura em diferentes períodos.",
-      },
-      {
-        tipo: "Climatologia Local",
-        descricao: "Monitoramento de ventos, umidade e outros fatores.",
-      },
-    ]);
-
-    setTrabalhos([
-      {
-        titulo: "Análise de Eficiência Solar no Maranhão",
-        autores: "F. Souza, P. Oliveira",
-        ano: "2021",
-      },
-      {
-        titulo: "Impacto Climático na Eficiência de Painéis Solares",
-        autores: "G. Costa, A. Lima",
-        ano: "2022",
-      },
-    ]);
-  }, []);
-
-  const renderEquipamentos = () => (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <h2 className="text-2xl font-semibold mb-4">Equipamentos</h2>
-      <ul className="space-y-3">
-        {equipamentos.map((equipamento, index) => (
-          <li key={index} className="border p-4 rounded-lg">
-            <h3 className="text-lg font-semibold">{equipamento.nome}</h3>
-            <p>{equipamento.tipo}</p>
-            <p>{equipamento.descricao}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
+  // Estado para controlar a exibição das informações do equipamento
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
+    null
   );
 
-  const renderCampanhas = () => (
-    <div className="bg-white shadow-md rounded-lg p-6 mt-6">
-      <h2 className="text-2xl font-semibold mb-4">Campanhas Realizadas</h2>
-      <ul className="space-y-3">
-        {campanhas.map((campanha, index) => (
-          <li key={index} className="border p-4 rounded-lg">
-            <h3 className="text-lg font-semibold">{campanha.titulo}</h3>
-            <p>{campanha.data}</p>
-            <p>{campanha.descricao}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  const handleShowDetails = (equipment: string) => {
+    setSelectedEquipment(equipment);
+  };
 
-  const renderDadosColetados = () => (
-    <div className="bg-white shadow-md rounded-lg p-6 mt-6">
-      <h2 className="text-2xl font-semibold mb-4">Tipos de Dados Coletados</h2>
-      <ul className="space-y-3">
-        {dados.map((dado, index) => (
-          <li key={index} className="border p-4 rounded-lg">
-            <h3 className="text-lg font-semibold">{dado.tipo}</h3>
-            <p>{dado.descricao}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-
-  const renderTrabalhos = () => (
-    <div className="bg-white shadow-md rounded-lg p-6 mt-6">
-      <h2 className="text-2xl font-semibold mb-4">Trabalhos Relacionados</h2>
-      <ul className="space-y-3">
-        {trabalhos.map((trabalho, index) => (
-          <li key={index} className="border p-4 rounded-lg">
-            <h3 className="text-lg font-semibold">{trabalho.titulo}</h3>
-            <p>Autores: {trabalho.autores}</p>
-            <p>Ano: {trabalho.ano}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-
-  const renderDownloadButton = () =>
-    user?.nivelPermissao === "admin" || user?.nivelPermissao === "superadmin" ? (
-      <div className="text-center mt-8">
-        <Link href="/download-dados">
-          <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300">
-            Baixar Dados Coletados
-          </button>
-        </Link>
-      </div>
-    ) : <div className="text-center mt-8">
-    <Link href="/download-dados">
-      <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300">
-        Baixar Dados Coletados
-      </button>
-    </Link>
-  </div>;
+  const handleCloseDetails = () => {
+    setSelectedEquipment(null);
+  };
 
   const renderEquatorialSection = () => (
-    <div className="mt-16 py-10 bg-gradient-to-r from-green-500 to-blue-600 text-white text-center rounded-lg shadow-lg">
+    <div className=" py-10 bg-gradient-to-r from-green-500 to-blue-600 text-white text-center rounded-lg shadow-lg">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold mb-6">
           Projeto em Parceria com a Equatorial Energia
@@ -190,22 +56,291 @@ const EOSOLARPage: React.FC = () => {
     </div>
   );
 
+  const renderQuemSomos = () => (
+    <section className=" py-5 bg-blue-ineof text-center">
+      <div className="container mx-auto px-20">
+        <div className="flex flex-col md:flex-row justify-between items-center space-y-8 md:space-y-0 md:space-x-6">
+          {/* Texto */}
+          <div className="md:w-1/3 text-left">
+            <p className="text-2xl text-white">
+              O{" "}
+              <span className="font-bold text-green-ineof">
+                Projeto EOSOLAR
+              </span>{" "}
+              é um projeto de P&D Aneel com foco no entendimento de alguns
+              fenômenos micrometeorológicos relevantes para prospecção do
+              potencial eólico e solar na região Equatorial.
+            </p>
+          </div>
+
+          {/* Imagem */}
+          <div className="md:w-1/3">
+            <Image
+              src={mapaMaranhao}
+              alt="Quem Somos"
+              width={400}
+              height={300}
+            />
+          </div>
+
+          {/* Vídeo do YouTube */}
+          <div className="md:w-1/3">
+            <iframe
+              width="550"
+              height="350"
+              src="https://www.youtube.com/embed/TxaNRBOPkeQ"
+              title="EoSolar"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderEquipamentoDetails = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-1/2">
+        <h3 className="text-2xl font-bold mb-4">Informações do Equipamento</h3>
+        <p className="mb-4">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque
+          fringilla, nulla nec.
+        </p>
+        <h4 className="text-xl font-semibold mb-2">Objetivos</h4>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        <button
+          className="mt-6 bg-blue-ineof text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-300"
+          onClick={handleCloseDetails}
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <Header />
-      <div className="container mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold text-center text-blue-ineof mb-8">
-          Energia Solar - EOSOLAR
-        </h1>
+      <Layout>
+        <main>
+          <Carousel
+            images={[equipeEosolar, equipeEosolar, equipeEosolar]}
+            logoImage={logoEosolarEquatorial} // Imagem de logo opcional
+            buttonText="Visite nossa plataforma interativa"
+            buttonLink="https://eosolar.equatorialenergia.com.br/#"
+          />
 
-        {renderEquipamentos()}
-        {renderCampanhas()}
-        {renderDadosColetados()}
-        {renderTrabalhos()}
-        {renderEquatorialSection()}
-        {renderDownloadButton()}
-      </div>
-      <Footer />
+          {/* Seção "Quem Somos" */}
+          {renderQuemSomos()}
+
+          {/* Seção "Equipamentos" */}
+          <section className="py-10 bg-white">
+            <div className="container mx-auto">
+              <div className="flex justify-between items-start">
+                {/* Grid de Imagens (Cards dos Equipamentos) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full md:w-2/3">
+                  <div className="relative bg-gray-100 p-4 rounded-lg shadow-lg">
+                    <Image
+                      src={sodar}
+                      alt="Estação Solarimétrica"
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button
+                        className="bg-white text-black px-3 py-1 rounded-lg"
+                        onClick={() =>
+                          handleShowDetails("Estação Solarimétrica")
+                        }
+                      >
+                        Detalhes
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative bg-gray-100 p-4 rounded-lg shadow-lg">
+                    <Image
+                      src={sodar}
+                      alt="Sistema de Apoio"
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button
+                        className="bg-white text-black px-3 py-1 rounded-lg"
+                        onClick={() => handleShowDetails("Sistema de Apoio")}
+                      >
+                        Detalhes
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative bg-gray-100 p-4 rounded-lg shadow-lg">
+                    <Image
+                      src={sodar}
+                      alt="LIDAR"
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button
+                        className="bg-white text-black px-3 py-1 rounded-lg"
+                        onClick={() => handleShowDetails("LIDAR")}
+                      >
+                        Detalhes
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative bg-gray-100 p-4 rounded-lg shadow-lg">
+                    <Image
+                      src={sodar}
+                      alt="SODAR"
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button
+                        className="bg-white text-black px-3 py-1 rounded-lg"
+                        onClick={() => handleShowDetails("SODAR")}
+                      >
+                        Detalhes
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative bg-gray-100 p-4 rounded-lg shadow-lg row-span-2">
+                    <Image
+                      src={sodar}
+                      alt="Torres Micrometeorológicas"
+                      className="w-full h-auto rounded-lg"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button
+                        className="bg-white text-black px-3 py-1 rounded-lg"
+                        onClick={() =>
+                          handleShowDetails("Torres Micrometeorológicas")
+                        }
+                      >
+                        Detalhes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Texto Explicativo */}
+                <div className="w-full md:w-1/3 ml-6">
+                  <h2 className="text-3xl font-bold mb-4">Equipamentos</h2>
+                  <p className="text-lg mb-4">
+                    Dentro da parte científica do projeto EOSOLAR há uma série
+                    de campanhas de medições com torres micrometeorológicas
+                    móveis, estação solarimétrica completa com rastreador solar
+                    e medições da radiação difusa e direta, além de equipamentos
+                    de sensoriamento remoto (SODAR e LIDAR).
+                  </p>
+                  <p className="text-lg">
+                    As campanhas de medição têm objetivos científicos e buscam
+                    compreender a Camada Limite Atmosférica na região costeira
+                    do Maranhão.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Renderiza as informações do equipamento ao clicar no botão */}
+          {selectedEquipment && renderEquipamentoDetails()}
+
+          <NossoTime />
+          {renderEquatorialSection()}
+
+          <PublicacoesPage />
+
+          <section className="py-10 bg-gray-100">
+            <div className="container mx-auto text-center">
+              <h2 className="text-4xl font-bold text-blue-ineof mb-8"></h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div className="flex justify-center">
+                  <Image src={logoUfma} alt="UFMA" width={150} height={150} />
+                </div>
+                <div className="flex justify-center">
+                  <Image src={logoIneof} alt="INEOF" width={150} height={150} />
+                </div>
+                <div className="flex justify-center">
+                  <Image src={logoFiec} alt="FIEC" width={150} height={150} />
+                </div>
+                <div className="flex justify-center">
+                  <Image
+                    src={logoEquatorial}
+                    alt="Equatorial Energia"
+                    width={150}
+                    height={150}
+                  />
+                </div>
+                <div className="flex justify-center">
+                  <Image src={logoAneel} alt="ANEEL" width={150} height={150} />
+                </div>
+                <div className="flex justify-center">
+                  <Image
+                    src={logoGera}
+                    alt="GERA Maranhão"
+                    width={150}
+                    height={150}
+                  />
+                </div>
+                <div className="flex justify-center">
+                  <Image
+                    src={logoCamargo}
+                    alt="Camargo Schubert"
+                    width={150}
+                    height={150}
+                  />
+                </div>
+                <div className="flex justify-center">
+                  <Image
+                    src={logoAlbtech}
+                    alt="Albtech"
+                    width={150}
+                    height={150}
+                  />
+                </div>
+                <div className="flex justify-center">
+                  <Image src={logoIEE} alt="IEE" width={150} height={150} />
+                </div>
+              </div>
+            </div>
+          </section>
+          <section className="py-10 bg-[#F1F8FF] flex justify-end items-center">
+            <div className="bg-gradient-to-r from-[#4E51D3] to-[#23C672] text-white rounded-lg flex justify-between items-center w-full max-w-7xl p-8">
+              <div className="text-left">
+                <h2 className="text-3xl font-bold">
+                  Todos bancos de dados de nossas campanhas de medição estão
+                  disponíveis gratuitamente
+                </h2>
+              </div>
+              <div className="flex justify-center items-center">
+                <a
+                  href="#"
+                  className="text-green-500 bg-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-100 transition duration-300"
+                >
+                  Acesse aqui{" "}
+                  <svg
+                    className="inline-block w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    ></path>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </section>
+        </main>
+      </Layout>
     </>
   );
 };

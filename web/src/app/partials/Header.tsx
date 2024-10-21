@@ -12,10 +12,14 @@ import {
 } from "@headlessui/react";
 import { BellIcon, XMarkIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import IneofLogo from "../../../public/INEOFLogoBranca.svg";
+import LogoEosolar from "../../../public/logoEosolar.svg"; // Adicionando o logo EOSOLAR
+import LogoEoceano from "../../../public/logoEoceano.svg"; // Adicionando o logo EOCEANO
 import Link from "next/link";
 import Image from "next/image";
 import userImage from "../../../public/user.svg";
 import { AuthContext } from "../../contexts/AuthContext";
+import { FaArrowRight } from "react-icons/fa";
+import { getAPIClient } from "@/services/axios";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -24,10 +28,28 @@ function classNames(...classes: string[]) {
 const Header: React.FC = () => {
   const { user, signOut, loading } = useContext(AuthContext);
   const [isAdministrator, setIsAdministrator] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     if (user) {
       setIsAdministrator(user.nivelPermissao === "superusuario");
+
+      // Função para buscar as notificações não lidas
+      const fetchUnreadNotifications = async () => {
+        try {
+          const api = getAPIClient();
+          const response = await api.get("/api/notificacoes");
+          const unreadNotifications = response.data.filter(
+            (notificacao: any) => !notificacao.lida
+          );
+          setUnreadCount(unreadNotifications.length);
+        } catch (error) {
+          console.error("Erro ao buscar notificações:", error);
+          setUnreadCount(0);
+        }
+      };
+
+      fetchUnreadNotifications();
     }
   }, [user]);
 
@@ -37,18 +59,19 @@ const Header: React.FC = () => {
         { name: "HOME", href: "/" },
         { name: "PUBLICAÇÕES", href: "/publicacoes" },
         { name: "NOTÍCIAS", href: "/noticias" },
-        { name: "EOSOLAR", href: "/eosolar" },
-        { name: "EOCEANO", href: "/eoceano" },
       ]
     : [
         { name: "HOME", href: "/" },
         { name: "PUBLICAÇÕES", href: "/publicacoes" },
         { name: "NOTÍCIAS", href: "/noticias" },
-        { name: "EOSOLAR", href: "/eosolar" },
-        { name: "EOCEANO", href: "/eoceano" },
       ];
 
-  const profile = ["Meu Perfil", "Minhas Publicações", "Minhas Notícias", "Favoritos"];
+  const profile = [
+    "Meu Perfil",
+    "Minhas Publicações",
+    "Minhas Notícias",
+    "Favoritos",
+  ];
 
   const handleLogout = () => {
     signOut();
@@ -57,6 +80,7 @@ const Header: React.FC = () => {
   if (loading) {
     return null;
   }
+  
 
   return (
     <Disclosure as="nav" className="bg-blue-ineof">
@@ -64,44 +88,88 @@ const Header: React.FC = () => {
         <>
           <div className="w-full bg-blue-ineof">
             <div className="max-w-7xl mx-auto px-4 sm:px-4 lg:px-4">
-              <div className="flex items-center justify-between h-16">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Link href="/">
-                      <span>
-                        <Image
-                          className="h-40 w-40"
-                          src={IneofLogo}
-                          alt="Logo INEOF"
-                          width={50}
-                          height={50}
-                          priority
-                        />
+              <div className="flex justify-between items-center h-16">
+                {/* Logo */}
+                <div className="flex-shrink-0">
+                  <Link href="/">
+                    <span>
+                      <Image
+                        className="h-40 w-40"
+                        src={IneofLogo}
+                        alt="Logo INEOF"
+                        width={50}
+                        height={50}
+                        priority
+                      />
+                    </span>
+                  </Link>
+                </div>
+
+                {/* Navigation Items */}
+                <div className="hidden md:flex items-center space-x-6">
+                  {navigation.slice(0, 4).map((item) => (
+                    <Link key={item.name} href={item.href}>
+                      <span
+                        className={classNames(
+                          "text-gray-300 hover:bg-green-ineof hover:text-blue-ineof",
+                          "px-3 py-2 rounded-md text-sm font-medium"
+                        )}
+                      >
+                        {item.name}
                       </span>
                     </Link>
-                  </div>
-                  <div className="hidden md:flex items-center justify-center md:justify-start">
-                    {navigation.map((item) => (
-                      <Link key={item.name} href={item.href}>
-                        <span
-                          className={classNames(
-                            "text-gray-300 hover:bg-green-ineof hover:text-blue-ineof",
-                            "px-3 py-2 rounded-md text-sm font-medium"
-                          )}
-                        >
-                          {item.name}
-                        </span>
-                      </Link>
-                    ))}
+                  ))}
+
+                  {/* Adicionando Logos e separador */}
+                  <div className="flex items-center space-x-2">
+                    <Link href="/eosolar">
+                      <div className="flex gap-1 items-center text-white hover:bg-green-ineof hover:text-blue-ineof hover:rounded-md">
+                        <Image
+                          className="h-8 w-8 "
+                          src={LogoEosolar}
+                          alt="Logo EOSOLAR"
+                          width={32}
+                          height={32}
+                          priority
+                        />{" "}
+                        <span className="mr-2">EOSOLAR</span>
+                      </div>
+                    </Link>
+                    <span className="text-gray-300">|</span>
+
+                    <Link href="/eoceano">
+                      <div className="flex  gap-1 items-center text-white hover:bg-green-ineof hover:text-blue-ineof hover:rounded-md">
+                        <Image
+                          className="h-8 w-8"
+                          src={LogoEoceano}
+                          alt="Logo EOCEANO"
+                          width={32}
+                          height={32}
+                          priority
+                        />{" "}
+                        <span className="mr-2">EOCEANO</span>
+                      </div>
+                    </Link>
                   </div>
                 </div>
 
+                {/* User profile or Login/Register */}
                 <div className="hidden md:flex items-center space-x-6">
                   {user ? (
                     <>
-                      <button className="bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
-                        <span className="sr-only">Visualizar Notificações</span>
-                        <BellIcon className="h-6 w-6" aria-hidden="true" />
+                   
+                   <button className="relative bg-gray-800 p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
+                        <Link href="/notificacoes">
+                          <span className="flex items-center">
+                            <span className="sr-only">Visualizar Notificações</span>
+                            <BellIcon className="h-6 w-6" aria-hidden="true" />
+                            {unreadCount > 0 && (
+                              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                                {unreadCount}
+                              </span>
+                            )}
+                          </span>
+                        </Link>
                       </button>
                       <Menu as="div" className="relative">
                         <MenuButton className="max-w-xs bg-gray-800 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
@@ -173,15 +241,16 @@ const Header: React.FC = () => {
                     <div className="flex items-baseline space-x-4">
                       <Link
                         href="/auth/login"
-                        className="text-gray-300 hover:bg-green-ineof hover:text-blue-ineof px-3 py-2 rounded-md text-sm font-medium"
+                        className="flex gap-1 items-center text-gray-300 hover:bg-green-ineof hover:text-blue-ineof px-3 py-2 rounded-md text-sm font-medium border border-white"
                       >
-                        LOGIN
+                        LOGIN <FaArrowRight />
                       </Link>
+
                       <Link
                         href="/auth/register"
-                        className="text-gray-300 hover:bg-green-ineof hover:text-blue-ineof px-3 py-2 rounded-md text-sm font-medium"
+                        className="flex gap-1 items-center text-gray-300 hover:bg-green-ineof hover:text-blue-ineof px-3 py-2 rounded-md text-sm font-medium border border-white"
                       >
-                        REGISTRO
+                        REGISTRO <FaArrowRight />
                       </Link>
                     </div>
                   )}

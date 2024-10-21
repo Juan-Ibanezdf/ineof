@@ -17,11 +17,12 @@ import (
 // NotificationsRouter configura as rotas para os handlers de notificações
 func NotificationsRouter(db *pgxpool.Pool) http.Handler {
 	r := chi.NewRouter()
-	r.Post("/", CreateNotification(db))
-	r.Get("/", GetAllNotifications(db))
-	r.Get("/{id}", GetNotificationByID(db))
-	r.Put("/{id}", UpdateNotification(db))
-	r.Delete("/{id}", DeleteNotification(db))
+	r.Post("/", CreateNotification(db))                          // Cria uma nova notificação
+	r.Get("/", GetAllNotifications(db))                          // Retorna todas as notificações
+	r.Get("/{id}", GetNotificationByID(db))                      // Retorna uma notificação por ID
+	r.Put("/{id}", UpdateNotification(db))                       // Atualiza uma notificação
+	r.Delete("/{id}", DeleteNotification(db))                    // Deleta uma notificação
+	r.Put("/{id}/marcar-como-vista", MarkNotificationAsRead(db)) // Marca a notificação como vista
 	return r
 }
 
@@ -52,7 +53,7 @@ func getUserRole(r *http.Request) (string, string, error) {
 	}
 
 	// Extraindo o nível de acesso do usuário e o ID
-	userLevel, ok := (*claims)["nivelAcesso"].(string)
+	userLevel, ok := (*claims)["nivelPermissao"].(string)
 	if !ok {
 		log.Println("Erro ao extrair 'nivelAcesso' do token JWT")
 		return "", "", nil
@@ -285,6 +286,29 @@ func DeleteNotification(db *pgxpool.Pool) http.HandlerFunc {
 			_, err = db.Exec(context.Background(), "UPDATE NotificacoesUsuarios SET oculta = true WHERE id_notificacao = $1 AND id_usuario = $2", id, userID)
 			if err != nil {
 				http.Error(w, "Falha ao ocultar notificação", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// MarkNotificationAsRead marca uma notificação como lida
+func MarkNotificationAsRead(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		userLevel, userID, err := getUserRole(r)
+		if err != nil {
+			http.Error(w, "Erro ao obter nível de acesso", http.StatusUnauthorized)
+			return
+		}
+
+		// Usuários normais podem marcar notificações como lidas
+		if userLevel != "admin" && userLevel != "superadmin" {
+			_, err := db.Exec(context.Background(), "UPDATE NotificacoesUsuarios SET lida = true WHERE id_notificacao = $1 AND id_usuario = $2", id, userID)
+			if err != nil {
+				http.Error(w, "Falha ao marcar notificação como lida", http.StatusInternalServerError)
 				return
 			}
 		}

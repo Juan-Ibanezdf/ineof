@@ -1,8 +1,7 @@
 {
-  "/noticias/page": "app/noticias/page.js",
+  "/notificacoes/page": "app/notificacoes/page.js",
+  "/adm/page": "app/adm/page.js",
   "/page": "app/page.js",
-  "/perfil/noticias/minhas-noticias/page": "app/perfil/noticias/minhas-noticias/page.js",
-  "/perfil/noticias/nova-noticia/page": "app/perfil/noticias/nova-noticia/page.js",
-  "/noticias/noticia/[identifier]/[slug]/page": "app/noticias/noticia/[identifier]/[slug]/page.js",
-  "/publicacoes/page": "app/publicacoes/page.js"
+  "/publicacoes/page": "app/publicacoes/page.js",
+  "/eosolar/page": "app/eosolar/page.js"
 }

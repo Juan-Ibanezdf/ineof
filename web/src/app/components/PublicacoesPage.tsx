@@ -17,6 +17,7 @@ interface Publicacao {
   autores: string[];
   slug: string;
   identifier: string;
+  palavrasChave: string[]; // Novamente incluindo as palavras-chave
 }
 
 // Função para truncar o texto
@@ -27,7 +28,11 @@ const truncateText = (text: string, maxLength: number) => {
   return text;
 };
 
-const PublicacoesPage: React.FC = () => {
+interface PublicacoesPageProps {
+  keyword?: string; // Prop opcional para filtrar as publicações
+}
+
+const PublicacoesPage: React.FC<PublicacoesPageProps> = ({ keyword }) => {
   const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +42,9 @@ const PublicacoesPage: React.FC = () => {
         const api = getAPIClient();
         const response = await api.get("/api/publicacoes");
         const publicacoesMapeadas = response.data.publicacoes
+          .filter((publicacao: any) =>
+            keyword ? publicacao.palavrasChave.includes(keyword) : true
+          ) // Filtrar publicações por palavra-chave, se fornecida
           .slice(0, 8)
           .map((publicacao: any) => ({
             idPublicacao: publicacao.id_publicacao,
@@ -46,6 +54,7 @@ const PublicacoesPage: React.FC = () => {
             autores: publicacao.autores,
             slug: publicacao.slug,
             identifier: publicacao.identifier,
+            palavrasChave: publicacao.palavrasChave || [], // Adicionando a lista de palavras-chave
           }));
         setPublicacoes(publicacoesMapeadas);
       } catch (error) {
@@ -56,7 +65,7 @@ const PublicacoesPage: React.FC = () => {
     };
 
     fetchPublicacoes();
-  }, []);
+  }, [keyword]); // Atualiza sempre que a palavra-chave mudar
 
   if (loading) {
     return <div>Carregando publicações...</div>;
@@ -120,7 +129,7 @@ const PublicacoesPage: React.FC = () => {
 
         {/* Setas de navegação com identificadores exclusivos */}
         <button className="publicacoes-swiper-button-prev absolute z-10 text-blue-600 hover:text-blue-ineof  p-2  left-4">
-          <FaChevronLeft  size={30}/>
+          <FaChevronLeft size={30} />
         </button>
         <button className="publicacoes-swiper-button-next absolute z-10 text-blue-600  hover:text-blue-ineof  p-2  right-4">
           <FaChevronRight size={30} />
