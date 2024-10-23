@@ -11,9 +11,11 @@ const QuemSomos = () => {
     <section
       className="w-full p-8 sm:p-12 md:p-16 lg:p-24 bg-no-repeat bg-center bg-cover"
       style={{ backgroundImage: `url(${backgroundImage.src})` }}
-    >
+    >      {/* Coluna 1 */} <div className='m-2 px-20'>
+      <h1 className='text-blue-ineof font-bold text-3xl' >Quem Somos</h1>
+    </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 max-w-7xl mx-auto">
-        {/* Coluna 1 */}
+  
         <div className="flex flex-col items-center text-center">
           <Image src={IneofLogo} alt="INEOF LOGO" className="w-2/4 lg:w-auto"  priority/>
           <p className="text-base sm:text-lg mt-4">
@@ -24,7 +26,7 @@ const QuemSomos = () => {
             científica e tecnológica de ponta associada a aplicações para promover a inovação e o espírito
             empreendedor.
           </p>
-          <button className="flex items-center gap-2 mt-4 py-2 px-8 bg-green-ineof text-white rounded hover:bg-blue-600">
+          <button className="flex items-center gap-2 mt-4 py-2 px-8 bg-green-ineof text-white rounded hover:bg-blue-ineof">
             Clique aqui e saiba mais
             <FaExternalLinkAlt />
           </button>
@@ -40,7 +42,7 @@ const QuemSomos = () => {
             Estado do Maranhão (FAPEMA), sob a coordenação do Professor Dr. Osvaldo Saavedra
             da Universidade Federal do Maranhão - UFMA.
           </p>
-          <button className="flex items-center gap-2 mt-4 py-2 px-8 bg-green-ineof text-white rounded hover:bg-blue-600 mb-36">
+          <button className="flex items-center gap-2 mt-4 py-2 px-8 bg-green-ineof text-white rounded hover:bg-blue-ineof mb-36">
             Clique aqui e saiba mais
             <FaExternalLinkAlt />
           </button>

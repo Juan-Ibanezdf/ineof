@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useContext, useCallback } from "react";
 import Link from "next/link";
 import { FaUser, FaKey, FaBorderAll, FaArrowRight, FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa";
-import { useSearchParams } from "next/navigation";  // Alterar para useSearchParams
+import { useSearchParams,useRouter } from "next/navigation";  // Alterar para useSearchParams
 import { getAPIClient } from "@/services/axios";
 import Layout from "../components/Layout";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -37,6 +37,7 @@ const PublicacoesPage: React.FC = () => {
 
 
   const searchParams = useSearchParams();   // Hook para acessar os query params
+  const router = useRouter();  // UseRouter para manipular a URL
 
   // Função para gerar os anos disponíveis no filtro de período
   const getAnos = () => {
@@ -49,7 +50,7 @@ const PublicacoesPage: React.FC = () => {
   };
 
   const getPalavrasChave = () => {
-    return ["Palavras-chave", "IA", "Energia Solar", "Ondas", "Vento", "Hidrogênio", "Baterias"];
+    return ["Palavras-chave", "IA", "Energia Solar", "Ondas", "Vento", "Hidrogênio", "Baterias", "eosolar"];
   };
 
 
@@ -58,6 +59,10 @@ const PublicacoesPage: React.FC = () => {
     const categoriaQueryParam = searchParams.get("categoria");
     if (categoriaQueryParam) {
       setFiltroCategoria(categoriaQueryParam);
+    }
+    const palavrasChaveQueryParam = searchParams.get("palavras_chave");
+    if (palavrasChaveQueryParam) {
+      setFiltroPalavrasChave(palavrasChaveQueryParam);
     }
   }, [searchParams]);
 
@@ -68,36 +73,42 @@ const PublicacoesPage: React.FC = () => {
         params: {
           pagina: paginaAtual,
           itens_por_pagina: itensPorPagina,
-          searchTerm,
+          searchTerm,  // Incluindo o searchTerm
           categoria: filtroCategoria !== "Todos" ? filtroCategoria : undefined,
           ano_inicio: filtroAnoInicio,
           ano_fim: filtroAnoFim,
           palavras_chave: filtroPalavrasChave !== "Todos" ? filtroPalavrasChave : undefined,
         },
       });
-
-      const publicacoesMapeadas = response.data.publicacoes.map(
-        (publicacao: any) => ({
-          idPublicacao: publicacao.id_publicacao,
-          titulo: publicacao.titulo,
-          autores: publicacao.autores,
-          palavrasChave: publicacao.palavras_chave,
-          categoria: publicacao.categoria,
-          identifier: publicacao.identifier,
-          slug: publicacao.slug,
-          dataCriacao: new Date(publicacao.data_criacao),
-          dataModificacao: new Date(publicacao.data_modificacao),
-          visualizacoes: publicacao.visualizacoes,
-          resumo: publicacao.resumo,
-        })
-      );
-
-      setPublicacoes(publicacoesMapeadas);
-      setTotalPublicacoes(response.data.total);
+  
+      // Verifica se há publicações na resposta e mapeia os dados corretamente
+      if (response.data.publicacoes && response.data.publicacoes.length > 0) {
+        const publicacoesMapeadas = response.data.publicacoes.map(
+          (publicacao: any) => ({
+            idPublicacao: publicacao.id_publicacao,
+            titulo: publicacao.titulo,
+            autores: publicacao.autores,
+            palavrasChave: publicacao.palavras_chave,
+            categoria: publicacao.categoria,
+            identifier: publicacao.identifier,
+            slug: publicacao.slug,
+            dataCriacao: new Date(publicacao.data_criacao),
+            dataModificacao: new Date(publicacao.data_modificacao),
+            visualizacoes: publicacao.visualizacoes,
+            resumo: publicacao.resumo,
+          })
+        );
+        setPublicacoes(publicacoesMapeadas);
+        setTotalPublicacoes(response.data.total);
+      } else {
+        setPublicacoes([]);
+        setTotalPublicacoes(0);
+      }
     } catch (error) {
       console.error("Erro ao obter as publicações", error);
     }
   }, [paginaAtual, filtroCategoria, filtroAnoInicio, filtroAnoFim, filtroPalavrasChave, searchTerm]);
+  
 
   useEffect(() => {
     fetchPublicacoes();
@@ -116,6 +127,10 @@ const PublicacoesPage: React.FC = () => {
     setFiltroPalavrasChave("Todos");
     setPaginaAtual(1);
     fetchPublicacoes();
+
+     // Remove os parâmetros da URL sem recarregar a página
+     router.replace("/publicacoes");
+     fetchPublicacoes();
   };
 
   const totalPaginas = Math.ceil(totalPublicacoes / itensPorPagina);
@@ -243,7 +258,7 @@ const PublicacoesPage: React.FC = () => {
             ))}
           </select>
           <button onClick={limparFiltros} className="bg-gray-400 hover:bg-gray-800  text-white p-2 rounded">
-            Limpar Filtros
+            Limpar
           </button>
           <button onClick={filtrarPublicacoes} className="bg-green-ineof hover:bg-green-800 text-white p-2 rounded  ml-4">
             Buscar
@@ -257,8 +272,9 @@ const PublicacoesPage: React.FC = () => {
           {renderPublicacoes()}
         </div>
 
-        {totalPaginas > 1 && (
+        {totalPublicacoes > itensPorPagina && totalPaginas > 1 && (
   <div className="flex justify-start mt-4">
+    {/* Exibe o botão "Voltar" apenas se não estiver na primeira página */}
     {paginaAtual > 1 && (
       <button
         onClick={() => setPaginaAtual(paginaAtual - 1)}
@@ -267,6 +283,8 @@ const PublicacoesPage: React.FC = () => {
         <FaArrowLeft />
       </button>
     )}
+
+    {/* Exibe os botões de página */}
     {Array.from({ length: totalPaginas }, (_, i) => (
       <button
         key={i}
@@ -280,6 +298,8 @@ const PublicacoesPage: React.FC = () => {
         {i + 1}
       </button>
     ))}
+
+    {/* Exibe o botão "Avançar" apenas se não estiver na última página */}
     {paginaAtual < totalPaginas && (
       <button
         onClick={() => setPaginaAtual(paginaAtual + 1)}
@@ -290,6 +310,9 @@ const PublicacoesPage: React.FC = () => {
     )}
   </div>
 )}
+
+
+
 
       </div>
     </Layout>

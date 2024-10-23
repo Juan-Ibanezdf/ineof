@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Carousel from "../components/Carousel";
 import logoEosolarEquatorial from "../../../public/logoEosolarEquatorial.svg";
@@ -10,7 +10,8 @@ import Layout from "../components/Layout";
 import Image from "next/image";
 import NossoTime from "../components/NossoTime";
 import sodar from "../../../public/sodar.svg";
-import PublicacoesPage from "../components/PublicacoesPage";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation } from "swiper/modules";
 import logoUfma from "../../../public/ufma-logo.svg";
 import logoIneof from "../../../public/INEOFLogo.svg";
 import logoFiec from "../../../public/logoFiec.svg";
@@ -20,12 +21,77 @@ import logoGera from "../../../public/geraMaranhao.svg";
 import logoAlbtech from "../../../public/logoAlbtech.svg";
 import logoCamargo from "../../../public/logoCamargo.svg";
 import logoIEE from "../../../public/logoIEE.svg";
+import { getAPIClient } from "@/services/axios";
+
+import "swiper/css";
+import "swiper/css/navigation";
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaExternalLinkAlt,
+} from "react-icons/fa";
+
+interface Publicacao {
+  idPublicacao: string;
+  palavras_chave: string;
+  titulo: string;
+  resumo: string;
+  categoria: string;
+  autores: string[];
+  slug: string;
+  identifier: string;
+}
+
+// Função para truncar o texto
+const truncateText = (text: string, maxLength: number) => {
+  return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
+};
 
 const EOSOLARPage: React.FC = () => {
   // Estado para controlar a exibição das informações do equipamento
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
     null
   );
+  const [publicacoes, setPublicacoes] = useState<Publicacao[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPublicacoes = async () => {
+      try {
+        const api = getAPIClient();
+        const response = await api.get("/api/publicacoes");
+
+        // Filtrando manualmente no frontend pelas palavras-chave 'eosolar'
+        const publicacoesMapeadas = response.data.publicacoes
+          .filter((publicacao: any) =>
+            publicacao.palavras_chave.includes("eosolar")
+          ) // Filtra as publicações que possuem "eosolar" como palavra-chave
+          .slice(0, 8) // Limita a exibição a 8 publicações
+          .map((publicacao: any) => ({
+            idPublicacao: publicacao.id_publicacao,
+            titulo: publicacao.titulo,
+            palavras_chave: publicacao.palavras_chave,
+            resumo: publicacao.resumo,
+            categoria: publicacao.categoria,
+            autores: publicacao.autores,
+            slug: publicacao.slug,
+            identifier: publicacao.identifier,
+          }));
+
+        setPublicacoes(publicacoesMapeadas);
+      } catch (error) {
+        console.error("Erro ao obter as publicações", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPublicacoes();
+  }, []);
+
+  if (loading) {
+    return <div>Carregando publicações...</div>;
+  }
 
   const handleShowDetails = (equipment: string) => {
     setSelectedEquipment(equipment);
@@ -245,13 +311,99 @@ const EOSOLARPage: React.FC = () => {
             </div>
           </section>
 
-          {/* Renderiza as informações do equipamento ao clicar no botão */}
-          {selectedEquipment && renderEquipamentoDetails()}
+          <section>
+  {/* Renderiza as informações do equipamento ao clicar no botão */}
+  {selectedEquipment && renderEquipamentoDetails()}
+
+  <h2 className="text-3xl font-bold text-center mb-8">Publicações EOSOLAR</h2>
+
+  <div className="relative flex items-center justify-between mx-24">
+    {publicacoes.length > 0 ? (
+      <Swiper
+        modules={[Navigation]}
+        spaceBetween={10}
+        slidesPerView={publicacoes.length > 3 ? 5.5 : publicacoes.length} // Ajusta o número de slides visíveis
+        loop={publicacoes.length > 2} // Apenas ativa o loop se houver mais de 5 publicações
+        navigation={publicacoes.length > 2} // Exibe navegação apenas se houver mais de 5 publicações
+        centeredSlides={publicacoes.length > 2} // Centraliza os slides se houver mais de 5
+        breakpoints={{
+          640: { slidesPerView: 1.2 },
+          768: { slidesPerView: 2.5 },
+          1024: {
+            slidesPerView: publicacoes.length > 5 ? 3.5 : publicacoes.length,
+          },
+          1280: {
+            slidesPerView: publicacoes.length > 5 ? 4.5 : publicacoes.length,
+          },
+        }}
+      >
+        {publicacoes.map((pub, index) => (
+          <SwiperSlide key={index}>
+            <div className="bg-indigo-50 rounded-lg h-60 flex flex-col justify-center items-center p-4 text-black shadow-lg">
+              <h3 className="text-lg font-semibold text-indigo-600 mb-2">
+                {truncateText(pub.titulo, 30)}
+              </h3>
+              <p className="text-sm mb-4">{pub.autores.join(", ")}</p>
+              <p className="text-sm text-gray-700">{pub.categoria}</p>
+              <p className="text-sm text-gray-700">
+              {Array.isArray(pub.palavras_chave) ? pub.palavras_chave.join(", ") : pub.palavras_chave}
+              </p>
+              <p className="text-xs mt-2 mb-4 text-gray-600">
+                {truncateText(pub.resumo, 30)}
+              </p>
+              <Link
+                href={`/publicacoes/publicacao/${pub.identifier}/${pub.slug}`}
+              >
+                <span className="inline-block bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 text-sm flex items-center gap-1">
+                  Ver detalhes <FaExternalLinkAlt />
+                </span>
+              </Link>
+            </div>
+          </SwiperSlide>
+        ))}
+
+        {publicacoes.length > 2 && (
+          <>
+            {/* Setas de navegação */}
+            <button className="publicacoes-swiper-button-prev absolute z-10 text-blue-600 hover:text-blue-ineof p-2 left-4">
+              <FaChevronLeft size={30} />
+            </button>
+            <button className="publicacoes-swiper-button-next absolute z-10 text-blue-600 hover:text-blue-ineof p-2 right-4">
+              <FaChevronRight size={30} />
+            </button>
+          </>
+        )}
+        {/* Card de "Veja mais publicações" */}
+        <SwiperSlide>
+          <div className="bg-indigo-50 rounded-lg h-60 flex flex-col justify-center items-center p-4 text-black shadow-lg cursor-pointer">
+            <h3 className="text-lg font-semibold text-indigo-600 mb-4">
+              Ver mais publicações
+            </h3>
+            <Link href="/publicacoes?palavras_chave=eosolar">
+              <button className="bg-green-500 text-white py-2 px-3 rounded hover:bg-green-600 text-sm flex items-center gap-1">
+                Veja todas as Publicações <FaExternalLinkAlt />
+              </button>
+            </Link>
+          </div>
+        </SwiperSlide>
+      </Swiper>
+    ) : (
+      <div className="bg-white rounded-lg h-60 flex flex-col justify-center items-center p-4 text-black shadow-lg">
+        <h3 className="text-lg font-semibold text-indigo-600 mb-4">
+          Nenhuma publicação encontrada
+        </h3>
+        <p className="text-sm mb-4">
+          Não há publicações disponíveis no momento.
+        </p>
+      </div>
+    )}
+  </div>
+</section>
+
+
 
           <NossoTime />
           {renderEquatorialSection()}
-
-          <PublicacoesPage />
 
           <section className="py-10 bg-gray-100">
             <div className="container mx-auto text-center">

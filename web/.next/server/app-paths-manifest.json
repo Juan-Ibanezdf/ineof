@@ -1,7 +1,8 @@
 {
-  "/notificacoes/page": "app/notificacoes/page.js",
-  "/adm/page": "app/adm/page.js",
+  "/perfil/noticias/minhas-noticias/page": "app/perfil/noticias/minhas-noticias/page.js",
   "/page": "app/page.js",
+  "/eosolar/page": "app/eosolar/page.js",
+  "/publicacoes/publicacao/[identifier]/[slug]/page": "app/publicacoes/publicacao/[identifier]/[slug]/page.js",
   "/publicacoes/page": "app/publicacoes/page.js",
-  "/eosolar/page": "app/eosolar/page.js"
+  "/noticias/page": "app/noticias/page.js"
 }

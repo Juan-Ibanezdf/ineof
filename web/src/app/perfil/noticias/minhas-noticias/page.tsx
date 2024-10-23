@@ -362,7 +362,7 @@ const NoticiasPage: React.FC = () => {
 
         {/* Botão para Nova Notícia */}
         <div className="mt-8 flex justify-start space-x-4">
-          <Link href="/perfil/noticia/nova-noticia">
+          <Link href="/perfil/noticias/nova-noticia">
             <button className="bg-green-ineof hover:bg-green-800 text-white px-4 py-2 rounded">
               Nova Notícia
             </button>

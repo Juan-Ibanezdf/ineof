@@ -12,6 +12,7 @@ import sodar from "../../public/sodar.svg";
 import boia from "../../public/boia.svg";
 import teste_turbina from "../../public/teste_turbina.svg";
 import Imagem1 from "../../public/image1.svg";
+import NossosVideos from "./components/NossosVideos";
 
 export default function Home() {
   return (
@@ -27,10 +28,12 @@ export default function Home() {
           <QuemSomos />
           <Objetivo />
           <Noticias />
+          <NossosVideos/>
           <PublicacoesPage />
           <Eventos />
           <NossoTime />
           <Financiamento />
+
         </main>
       </Layout>
     </>

@@ -72,7 +72,7 @@ const PublicacaoPage: React.FC = () => {
 
           <p className="text-lg mb-4">
             <strong>Palavras-Chave:</strong>{" "}
-            {publicacao.palavrasChave || "Não disponível"}
+            {publicacao.palavras_chave || "Não disponível"}
           </p>
 
           <p className="text-lg mb-4">

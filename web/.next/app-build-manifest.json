@@ -1,9 +1,10 @@
 {
   "pages": {
-    "/notificacoes/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/notificacoes/page.js"
+      "static/css/app/page.css",
+      "static/chunks/app/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,27 +12,56 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/page": [
+    "/eosolar/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/page.css",
-      "static/chunks/app/page.js"
-    ],
-    "/adm/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/adm/page.js"
+      "static/css/app/eosolar/page.css",
+      "static/chunks/app/eosolar/page.js"
     ],
     "/publicacoes/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/publicacoes/page.js"
     ],
-    "/eosolar/page": [
+    "/auth/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/eosolar/page.css",
-      "static/chunks/app/eosolar/page.js"
+      "static/chunks/app/auth/login/page.js"
+    ],
+    "/notificacoes/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/notificacoes/page.js"
+    ],
+    "/perfil/publicacoes/minhas-publicacoes/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/publicacoes/minhas-publicacoes/page.js"
+    ],
+    "/perfil/publicacoes/nova-publicacao/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/publicacoes/nova-publicacao/page.js"
+    ],
+    "/perfil/noticias/minhas-noticias/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/noticias/minhas-noticias/page.js"
+    ],
+    "/perfil/noticias/nova-noticia/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/perfil/noticias/nova-noticia/page.js"
+    ],
+    "/publicacoes/publicacao/[identifier]/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/publicacoes/publicacao/[identifier]/[slug]/page.js"
+    ],
+    "/noticias/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/noticias/page.js"
     ]
   }
 }
