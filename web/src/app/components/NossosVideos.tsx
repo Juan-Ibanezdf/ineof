@@ -37,7 +37,7 @@ const truncateTitle = (title: string, maxLength: number) => {
 
 // Componente de vídeos
 const NossosVideos: React.FC = () => {
-  const apiKey = "AIzaSyCDHf0XI9eqsXj6pEnIAwHBuTWmQW-2HAU";
+  const apiKey = "chave aqui";
   const channelId = "UCRWk5ymsYkjHhXDToKdSAYA"; // Substitua com o channelId correto
 
   const maxResults = 8;
